@@ -92,7 +92,8 @@ const el = {
   textColorInput: document.getElementById('textColorInput'),
   wrapToggleBtn: document.getElementById('wrapToggleBtn'),
   italicToggleBtn: document.getElementById('italicToggleBtn'),
-  markerStats: document.getElementById('markerStats')
+  markerStats: document.getElementById('markerStats'),
+  plainModeToggleBtn: document.getElementById('plainModeToggleBtn')
 };
 
 let db;
