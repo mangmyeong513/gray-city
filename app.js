@@ -1,22 +1,16 @@
 const reader = document.getElementById('reader');
 const input = document.getElementById('txtInput');
 
-input.addEventListener('change', (e)=>{
+input.addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
 
-  const worker = new Worker('./worker.js');
-  worker.postMessage({file});
+  reader.innerHTML = '불러오는 중...';
 
-  worker.onmessage = (e)=>{
-    if(e.data.type==='progress'){
-      reader.innerHTML = '불러오는 중... ' + e.data.percent + '%';
-    }
+  const text = await file.text();
+  const lines = text.split('\\n');
 
-    if(e.data.type==='done'){
-      render(e.data.lines);
-    }
-  };
+  render(lines);
 });
 
 function render(lines){
@@ -30,9 +24,7 @@ function render(lines){
     }
   }
 
-  requestAnimationFrame(()=>{
-    reader.innerHTML = html;
-  });
+  reader.innerHTML = html;
 }
 
 function escape(s){
