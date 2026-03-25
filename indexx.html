@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TXT Reader</title>
+  <style>
+    :root{
+      --bg:#f6f0e6;
+      --card:#fffaf3;
+      --text:#2b241c;
+      --muted:#7d6f61;
+      --border:rgba(43,36,28,.10);
+      --safe-top:env(safe-area-inset-top,0px);
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{
+      margin:0;padding:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard',sans-serif;
+    }
+    body{min-height:100dvh}
+    .app{max-width:760px;margin:0 auto;padding:calc(12px + var(--safe-top)) 12px calc(18px + var(--safe-bottom))}
+    .top{position:sticky;top:0;z-index:10;padding-bottom:10px;background:linear-gradient(to bottom,var(--bg) 80%, rgba(246,240,230,0))}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.03)}
+    .title{font-size:18px;font-weight:800;letter-spacing:-.02em}
+    .sub{font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .btn{appearance:none;border:1px solid var(--border);background:#2b241c;color:#fff;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:var(--card);color:var(--text)}
+    .status{font-size:12px;color:var(--muted);min-height:18px}
+    .reader{margin-top:12px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px 14px;min-height:64dvh}
+    .meta{font-size:12px;color:var(--muted);margin-bottom:12px}
+    .para{margin:0 0 14px;font-size:16px;line-height:1.8;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+    .empty{color:var(--muted);font-size:14px;line-height:1.7}
+    .seg-bold{font-weight:800}
+    .seg-star{font-style:italic;opacity:.68}
+    .seg-double{color:#5b4431}
+    details.acc{margin:0 0 14px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.35);overflow:hidden}
+    details.acc summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;font-weight:700;color:var(--text);background:rgba(0,0,0,.02)}
+    details.acc summary::-webkit-details-marker{display:none}
+    .acc-body{padding:12px 14px 2px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="card">
+        <div class="title">TXT Reader</div>
+        <div class="sub">기본 읽기 + 치환만 들어간 단순 버전이에요. <code>*</code>, <code>**</code>, <code>"</code>, <code>[details: 제목]...[/details]</code>를 처리해요.</div>
+        <div class="row">
+          <button id="pickBtn" class="btn">TXT 불러오기</button>
+          <button id="clearBtn" class="btn secondary">지우기</button>
+          <input id="fileInput" type="file" accept=".txt,text/plain" hidden />
+        </div>
+        <div id="status" class="row status"></div>
+      </div>
+    </div>
+
+    <div id="reader" class="reader">
+      <div class="empty">TXT 파일을 선택하면 여기에 본문이 보여요.</div>
+    </div>
+  </div>
+
+  <script>
+    const pickBtn = document.getElementById('pickBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const fileInput = document.getElementById('fileInput');
+    const statusEl = document.getElementById('status');
+    const readerEl = document.getElementById('reader');
+
+    function setStatus(text) {
+      statusEl.textContent = text || '';
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;');
+    }
+
+    function renderInline(text) {
+      const src = String(text || '');
+      const regex = /\*\*(.+?)\*\*|\*(.+?)\*|"([^"]+)"/g;
+      let result = '';
+      let last = 0;
+      let match;
+
+      while ((match = regex.exec(src)) !== null) {
+        if (match.index > last) {
+          result += escapeHtml(src.slice(last, match.index));
+        }
+
+        if (match[1] != null) {
+          result += '<span class="seg-bold">' + escapeHtml(match[1]) + '</span>';
+        } else if (match[2] != null) {
+          result += '<span class="seg-star">' + escapeHtml(match[2]) + '</span>';
+        } else if (match[3] != null) {
+          result += '<span class="seg-double">"' + escapeHtml(match[3]) + '"</span>';
+        }
+
+        last = regex.lastIndex;
+      }
+
+      if (last < src.length) {
+        result += escapeHtml(src.slice(last));
+      }
+
+      return result;
+    }
+
+    function parseBlocks(text) {
+      const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+      const blocks = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        const open = line.match(/^\[details:\s*(.+?)\s*\]$/i);
+        if (open) {
+          const title = open[1];
+          i++;
+          const body = [];
+          while (i < lines.length && !/^\[\/details\]\s*$/i.test(lines[i])) {
+            body.push(lines[i]);
+            i++;
+          }
+          if (i < lines.length) i++;
+          blocks.push({ kind: 'details', title: title, body: body.join('\n') });
+          continue;
+        }
+
+        if (!line.trim()) {
+          i++;
+          continue;
+        }
+
+        const para = [line];
+        i++;
+        while (i < lines.length) {
+          const current = lines[i];
+          if (!current.trim()) break;
+          if (/^\[details:\s*(.+?)\s*\]$/i.test(current)) break;
+          para.push(current);
+          i++;
+        }
+        blocks.push({ kind: 'paragraph', text: para.join('\n') });
+      }
+
+      return blocks;
+    }
+
+    function renderAccordion(title, bodyText) {
+      const bodyParagraphs = String(bodyText || '').split(/\n{2,}/).filter(Boolean);
+      let bodyHtml = '';
+      for (const para of bodyParagraphs) {
+        bodyHtml += '<p class="para">' + renderInline(para) + '</p>';
+      }
+      return '<details class="acc"><summary>' + renderInline(title) + '</summary><div class="acc-body">' + bodyHtml + '</div></details>';
+    }
+
+    function renderText(text, fileName) {
+      const blocks = parseBlocks(text);
+      let html = '<div class="meta">' + escapeHtml(fileName) + ' · ' + blocks.length.toLocaleString() + '블록</div>';
+
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        if (block.kind === 'details') {
+          html += renderAccordion(block.title, block.body);
+        } else {
+          html += '<p class="para">' + renderInline(block.text) + '</p>';
+        }
+
+        if (i > 0 && i % 120 === 0) {
+          readerEl.innerHTML = html;
+        }
+      }
+
+      requestAnimationFrame(() => {
+        readerEl.innerHTML = html;
+      });
+    }
+
+    async function openFile(file) {
+      try {
+        pickBtn.disabled = true;
+        setStatus(file.size > 1024 * 1024 ? '큰 파일 읽는 중...' : '불러오는 중...');
+        readerEl.innerHTML = '<div class="empty">파일을 읽는 중이에요...</div>';
+
+        const text = await file.text();
+
+        setStatus('본문 그리는 중...');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        renderText(text, file.name);
+        setStatus('완료 · ' + (file.size / 1024 / 1024).toFixed(2) + 'MB');
+      } catch (error) {
+        console.error(error);
+        setStatus('불러오기에 실패했어요.');
+        readerEl.innerHTML = '<div class="empty">파일을 읽는 중 오류가 났어요. 다시 시도해 주세요.</div>';
+      } finally {
+        pickBtn.disabled = false;
+        fileInput.value = '';
+      }
+    }
+
+    pickBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) openFile(file);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      setStatus('');
+      readerEl.innerHTML = '<div class="empty">TXT 파일을 선택하면 여기에 본문이 보여요.</div>';
+    });
+  </script>
+</body>
+</html>
