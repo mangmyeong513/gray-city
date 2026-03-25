@@ -1,13 +1,13 @@
 {
-  "name": "TXT Reader Lite",
+  "name": "TXT Reader Line",
   "short_name": "TXT Reader",
-  "description": "TXT 파일을 가볍게 읽는 로컬 PWA 리더",
+  "description": "TXT 파일을 전자책처럼 읽는 PWA 리더",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f1e8",
-  "theme_color": "#f6f1e8",
+  "background_color": "#f4efe6",
+  "theme_color": "#f4efe6",
   "icons": [
     {
       "src": "./icon-192.png",
