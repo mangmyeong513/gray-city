@@ -12,6 +12,7 @@ input.addEventListener('change', (e)=>{
     if(e.data.type==='progress'){
       reader.innerHTML = '불러오는 중... ' + e.data.percent + '%';
     }
+
     if(e.data.type==='done'){
       render(e.data.lines);
     }
@@ -20,10 +21,18 @@ input.addEventListener('change', (e)=>{
 
 function render(lines){
   let html = '';
-  lines.forEach(line=>{
-    html += `<div class="page-line">${escape(line)}</div>`;
+
+  for(let i=0;i<lines.length;i++){
+    html += `<div class="page-line">${escape(lines[i])}</div>`;
+
+    if(i % 300 === 0){
+      reader.innerHTML = html;
+    }
+  }
+
+  requestAnimationFrame(()=>{
+    reader.innerHTML = html;
   });
-  reader.innerHTML = html;
 }
 
 function escape(s){
