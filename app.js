@@ -44,7 +44,8 @@ const state = {
     customFontName: '',
     customFontData: '',
     customFontFamily: '',
-    recentBookId: ''
+    recentBookId: '',
+    plainMode: 'narration'
   }
 };
 
