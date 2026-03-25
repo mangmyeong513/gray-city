@@ -488,7 +488,11 @@ function renderBlock(block) {
   if (block.kind === 'h3') return `<div class="line-h3" style="color:${state.settings.textColor}">${html}</div>`;
   if (block.kind === 'quote') return `<blockquote class="line-quote">${html}</blockquote>`;
 
-  return `<p class="page-line" style="color:${state.settings.textColor}">${html}</p>`;
+  const plainClass = state.settings.plainMode === 'dialogue'
+    ? 'page-line plain-dialogue'
+    : 'page-line plain-narration';
+
+  return `<p class="${plainClass}" style="color:${state.settings.textColor}">${html}</p>`; 
 }
 
 function renderReader() {
