@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe6" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <title>TXT Reader Line</title>
+  <title>TXT Reader Line Optimized</title>
   <style>
     :root{
       --bg:#f4efe6;
@@ -22,7 +22,7 @@
       --safe-top:env(safe-area-inset-top,0px);
       --safe-bottom:env(safe-area-inset-bottom,0px);
       --header-h:58px;
-      --bottom-h:108px;
+      --bottom-h:146px;
     }
 
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -65,7 +65,7 @@
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
     }
 
-    .icon-btn,.menu-btn,.book-card,.chip-btn,.tab-btn,.sheet-btn{
+    .icon-btn,.menu-btn,.book-card,.chip-btn,.tab-btn,.sheet-btn,.details-toggle{
       border:1px solid var(--border);background:var(--surface);color:var(--text);
       border-radius:16px;cursor:pointer;
     }
@@ -110,10 +110,8 @@
       height:100%;overflow:hidden;padding:8px 14px 10px;
     }
     .page-box{
-      height:100%;
-      overflow:hidden;
+      height:100%;overflow:hidden;width:100%;
       font-family:var(--reader-font);
-      width:100%;
     }
     .page-line{
       margin:0;
@@ -132,9 +130,61 @@
       min-height:8px;
     }
     .seg-bold{font-weight:800}
-    .seg-star{font-style:italic}
-    .seg-double{opacity:.92}
+    .seg-star{font-style:italic;opacity:.62}
+    .seg-star.no-italic{font-style:normal}
+    .seg-double{opacity:.95}
     .seg-single{opacity:.88}
+
+    .line-h1,.line-h2,.line-h3{
+      font-weight:900;
+      letter-spacing:-.03em;
+      white-space:pre-wrap;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+      max-width:100%;
+      user-select:text;
+    }
+    .line-h1{
+      font-size:calc(var(--reader-size) * 1.46);
+      line-height:1.25;
+      margin:0 0 10px;
+    }
+    .line-h2{
+      font-size:calc(var(--reader-size) * 1.25);
+      line-height:1.28;
+      margin:0 0 8px;
+    }
+    .line-h3{
+      font-size:calc(var(--reader-size) * 1.10);
+      line-height:1.32;
+      margin:0 0 8px;
+    }
+    .line-quote{
+      margin:0;
+      padding-left:12px;
+      border-left:3px solid var(--border);
+      color:var(--muted);
+      white-space:pre-wrap;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+      max-width:100%;
+      user-select:text;
+    }
+    .details-summary{
+      display:flex;align-items:center;gap:8px;
+      font-weight:800;color:var(--text);
+      padding:6px 10px;margin:0;
+      border:1px solid var(--border);
+      border-radius:12px;background:var(--surface-2);
+      user-select:none;
+    }
+    .details-body{
+      margin-top:8px;
+      padding:8px 10px;
+      border-radius:12px;
+      background:rgba(0,0,0,.03);
+      border:1px solid var(--border);
+    }
 
     .tap-zone{
       position:fixed;top:calc(var(--header-h) + var(--safe-top));
@@ -221,7 +271,7 @@
     }
 
     @media (max-width:380px){
-      :root{--bottom-h:146px}
+      :root{--bottom-h:182px}
       .text-grid{grid-template-columns:1fr}
       .marker-grid{grid-template-columns:repeat(3,1fr)}
       .brand-sub{max-width:180px}
@@ -236,7 +286,7 @@
           <div class="brand-mark">📚</div>
           <div>
             <div class="brand-title">TXT Reader Line</div>
-            <div class="brand-sub">줄 기반 페이지 분할</div>
+            <div class="brand-sub">줄 기반 + HTML풍 블록 지원</div>
           </div>
         </div>
         <button id="libraryMenuBtn" class="icon-btn" aria-label="메뉴">✦</button>
@@ -246,7 +296,7 @@
         <section class="hero">
           <div class="hero-title">줄 기준으로 끊기기</div>
           <div class="hero-sub">
-            글자가 사라지거나 오른쪽이 새는 걸 줄이기 위해, 줄 단위로 페이지를 나눠요.
+            #, ##, ### 제목과 &gt; 인용문, [details: 제목] 블록을 지원해요. 자동 줄바꿈은 "큰따옴표 블록"에만 강하게 적용돼요.
           </div>
           <button id="importTxtBtnTop" class="menu-btn">TXT 불러오기</button>
           <button id="reopenRecentBtnTop" class="menu-btn">최근 책 다시 열기</button>
@@ -315,8 +365,12 @@
               <input id="textColorInput" type="color" value="#2e2419" />
             </div>
             <div class="setting-card">
-              <div class="setting-label">줄바꿈</div>
-              <button id="wrapToggleBtn" class="chip-btn">자동 줄바꿈 켜짐</button>
+              <div class="setting-label">이탤릭</div>
+              <button id="italicToggleBtn" class="chip-btn">이탤릭 켜짐</button>
+            </div>
+            <div class="setting-card">
+              <div class="setting-label">기본 줄바꿈</div>
+              <button id="wrapToggleBtn" class="chip-btn">기본 줄바꿈 꺼짐</button>
             </div>
           </div>
         </div>
@@ -367,16 +421,24 @@
   </div>
 
   <script>
-    const SAMPLE_TEXT = `**제목**
-여기는 일반 문장입니다.
+    const SAMPLE_TEXT = `# 큰 제목
 
-*별표*가 들어간 문장도 읽을 수 있어요.
+## 중간 제목
 
-"큰따옴표"와 '작은따옴표'도 확인할 수 있어요.
+### 작은 제목
 
-가운데를 누르면 UI가 숨고, 오른쪽/왼쪽을 누르면 페이지가 넘어가요.`;
+> 이건 인용문입니다.
 
-    const DB_NAME = 'txt-reader-line-db';
+"이 블록은 자동 줄바꿈이 강하게 적용돼요. 긴 문장이어도 화면 안에서 잘 끊어집니다."
+
+*연한 강조* 와 **강한 강조** 도 함께 보여요.
+
+[details: 접기 예시]
+이 안 내용은 summary를 눌렀을 때 보입니다.
+여러 줄도 들어갈 수 있어요.
+[/details]`;
+
+    const DB_NAME = 'txt-reader-line-optimized-db';
     const DB_VERSION = 1;
     const BOOK_STORE = 'books';
     const SETTING_STORE = 'settings';
@@ -396,7 +458,8 @@
         fontSize: 17,
         lineHeight: 1.88,
         textColor: '#2e2419',
-        wrap: true,
+        wrap: false,
+        italic: true,
         markerFilter: 'all',
         customFontName: '',
         customFontData: '',
@@ -447,6 +510,7 @@
       lineHeightRange: document.getElementById('lineHeightRange'),
       textColorInput: document.getElementById('textColorInput'),
       wrapToggleBtn: document.getElementById('wrapToggleBtn'),
+      italicToggleBtn: document.getElementById('italicToggleBtn'),
       markerStats: document.getElementById('markerStats'),
       measureLine: document.getElementById('measureLine')
     };
@@ -538,48 +602,155 @@
       return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    function parseInline(text) {
-      const regex = /\*\*(.+?)\*\*|\*(.+?)\*|"([^"]+)"|'([^']+)'/g;
-      const segments = [];
-      const markers = new Set();
-      let last = 0;
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        if (match.index > last) segments.push({ type:'plain', text:text.slice(last, match.index) });
-        if (match[1] != null) { segments.push({ type:'bold', text:match[1] }); markers.add('bold'); }
-        else if (match[2] != null) { segments.push({ type:'star', text:match[2] }); markers.add('star'); }
-        else if (match[3] != null) { segments.push({ type:'double', text:match[3] }); markers.add('double'); }
-        else if (match[4] != null) { segments.push({ type:'single', text:match[4] }); markers.add('single'); }
-        last = regex.lastIndex;
+    function splitRawToBlocks(rawText) {
+      const normalized = rawText.replace(/\r\n/g, '\n');
+      const lines = normalized.split('\n');
+      const blocks = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+        if (!line.trim()) { i++; continue; }
+
+        const detailsMatch = line.match(/^\[details:\s*(.+?)\s*\]$/i);
+        if (detailsMatch) {
+          const summary = detailsMatch[1];
+          i++;
+          const body = [];
+          while (i < lines.length && !/^\[\/details\]\s*$/i.test(lines[i])) {
+            body.push(lines[i]);
+            i++;
+          }
+          if (i < lines.length) i++;
+          blocks.push({ kind:'details', summary, bodyText: body.join('\n') });
+          continue;
+        }
+
+        if (/^###\s+/.test(line)) {
+          blocks.push({ kind:'h3', text: line.replace(/^###\s+/, '') });
+          i++;
+          continue;
+        }
+        if (/^##\s+/.test(line)) {
+          blocks.push({ kind:'h2', text: line.replace(/^##\s+/, '') });
+          i++;
+          continue;
+        }
+        if (/^#\s+/.test(line)) {
+          blocks.push({ kind:'h1', text: line.replace(/^#\s+/, '') });
+          i++;
+          continue;
+        }
+        if (/^>\s?/.test(line)) {
+          const quoteLines = [];
+          while (i < lines.length && /^>\s?/.test(lines[i])) {
+            quoteLines.push(lines[i].replace(/^>\s?/, ''));
+            i++;
+          }
+          blocks.push({ kind:'quote', text: quoteLines.join('\n') });
+          continue;
+        }
+
+        const paraLines = [];
+        while (i < lines.length && lines[i].trim() && !/^\[details:\s*(.+?)\s*\]$/i.test(lines[i]) && !/^#/.test(lines[i]) && !/^>\s?/.test(lines[i])) {
+          paraLines.push(lines[i]);
+          i++;
+        }
+        blocks.push({ kind:'paragraph', text: paraLines.join('\n') });
       }
-      if (last < text.length) segments.push({ type:'plain', text:text.slice(last) });
-      return { segments, markers: Array.from(markers) };
+
+      return blocks;
     }
 
-    function buildParagraphs(rawText) {
-      const parts = rawText.replace(/\r\n/g, '\n').split(/\n{2,}/);
-      return parts.map((text, idx) => {
-        const parsed = parseInline(text);
-        return { id: idx, raw: text, segments: parsed.segments, markers: parsed.markers };
-      }).filter(item => item.raw.trim().length);
+    function buildBookContent(rawText) {
+      const blocks = splitRawToBlocks(rawText);
+      return blocks.map((block, idx) => {
+        if (block.kind === 'details') {
+          const bodyBlocks = buildBookContent(block.bodyText || '');
+          return { id: idx, kind:'details', summary: block.summary, bodyBlocks };
+        }
+        const parsed = parseInline(block.text || '');
+        return {
+          id: idx,
+          kind: block.kind,
+          raw: block.text || '',
+          segments: parsed.segments,
+          markers: parsed.markers
+        };
+      }).filter(Boolean);
+    }
+
+    function getBlockMarkers(block) {
+      if (block.kind === 'details') {
+        const found = new Set();
+        block.bodyBlocks.forEach(inner => getBlockMarkers(inner).forEach(m => found.add(m)));
+        return Array.from(found);
+      }
+      return block.markers || [];
+    }
+
+    function blockToStatMarkers(blocks) {
+      const counts = { bold:0, star:0, double:0, single:0 };
+      const walk = (items) => {
+        items.forEach(item => {
+          if (item.kind === 'details') return walk(item.bodyBlocks || []);
+          (item.markers || []).forEach(m => { if (counts[m] != null) counts[m] += 1; });
+        });
+      };
+      walk(blocks);
+      return counts;
+    }
+
+    function segmentToHTML(seg, italicEnabled) {
+      const t = escapeHtml(seg.text);
+      if (seg.type === 'bold') return `<span class="seg-bold">${t}</span>`;
+      if (seg.type === 'star') return `<span class="seg-star${italicEnabled ? '' : ' no-italic'}">${t}</span>`;
+      if (seg.type === 'double') return `<span class="seg-double">${t}</span>`;
+      if (seg.type === 'single') return `<span class="seg-single">${t}</span>`;
+      return t;
     }
 
     function lineToHTML(lineObj) {
       if (lineObj.blank) return '<div class="line-gap"></div>';
-      const inner = lineObj.segments.map(seg => {
-        const t = escapeHtml(seg.text);
-        if (seg.type === 'bold') return `<span class="seg-bold">${t}</span>`;
-        if (seg.type === 'star') return `<span class="seg-star">${t}</span>`;
-        if (seg.type === 'double') return `<span class="seg-double">"${t}"</span>`;
-        if (seg.type === 'single') return `<span class="seg-single">'${t}'</span>`;
-        return t;
-      }).join('');
+
+      if (lineObj.kind === 'details-summary') {
+        return `<div class="details-summary">▸ ${escapeHtml(lineObj.summary)}</div>`;
+      }
+
+      if (lineObj.kind === 'details-body-line') {
+        const inner = lineObj.segments.map(seg => segmentToHTML(seg, state.settings.italic)).join('');
+        return `<div class="details-body"><p class="page-line" style="color:${state.settings.textColor}">${inner}</p></div>`;
+      }
+
+      if (lineObj.kind === 'h1' || lineObj.kind === 'h2' || lineObj.kind === 'h3') {
+        const cls = lineObj.kind === 'h1' ? 'line-h1' : lineObj.kind === 'h2' ? 'line-h2' : 'line-h3';
+        const inner = lineObj.segments.map(seg => segmentToHTML(seg, state.settings.italic)).join('');
+        return `<div class="${cls}" style="color:${state.settings.textColor}">${inner}</div>`;
+      }
+
+      if (lineObj.kind === 'quote') {
+        const inner = lineObj.segments.map(seg => segmentToHTML(seg, state.settings.italic)).join('');
+        return `<blockquote class="line-quote">${inner}</blockquote>`;
+      }
+
+      const inner = lineObj.segments.map(seg => segmentToHTML(seg, state.settings.italic)).join('');
       return `<p class="page-line" style="color:${state.settings.textColor}">${inner}</p>`;
     }
 
-    function paragraphsForCurrentFilter(paragraphs) {
-      if (state.settings.markerFilter === 'all') return paragraphs;
-      return paragraphs.filter(p => p.markers.includes(state.settings.markerFilter));
+    function blocksForCurrentFilter(blocks) {
+      if (state.settings.markerFilter === 'all') return blocks;
+      const walk = (items) => items.filter(item => {
+        if (item.kind === 'details') {
+          const filteredBody = walk(item.bodyBlocks || []);
+          if (filteredBody.length) {
+            item = { ...item, bodyBlocks: filteredBody };
+            return true;
+          }
+          return false;
+        }
+        return (item.markers || []).includes(state.settings.markerFilter);
+      });
+      return walk(blocks);
     }
 
     function getAvailableReaderHeight() {
@@ -587,7 +758,7 @@
       const topInset = parseFloat(style.getPropertyValue('--safe-top')) || 0;
       const bottomInset = parseFloat(style.getPropertyValue('--safe-bottom')) || 0;
       const headerH = parseFloat(style.getPropertyValue('--header-h')) || 58;
-      const bottomH = parseFloat(style.getPropertyValue('--bottom-h')) || 108;
+      const bottomH = parseFloat(style.getPropertyValue('--bottom-h')) || 146;
       return Math.max(220, window.innerHeight - topInset - bottomInset - headerH - bottomH);
     }
 
@@ -608,6 +779,7 @@
         state.settings.fontSize,
         state.settings.lineHeight,
         state.settings.wrap ? 1 : 0,
+        state.settings.italic ? 1 : 0,
         state.settings.markerFilter,
         state.settings.customFontName || '',
         Math.min(window.innerWidth, 430),
@@ -711,7 +883,8 @@
       el.fontSizeRange.value = String(state.settings.fontSize);
       el.lineHeightRange.value = String(Math.round(state.settings.lineHeight * 100));
       el.textColorInput.value = state.settings.textColor;
-      el.wrapToggleBtn.textContent = state.settings.wrap ? '자동 줄바꿈 켜짐' : '자동 줄바꿈 꺼짐';
+      el.wrapToggleBtn.textContent = state.settings.wrap ? '기본 줄바꿈 켜짐' : '기본 줄바꿈 꺼짐';
+      el.italicToggleBtn.textContent = state.settings.italic ? '이탤릭 켜짐' : '이탤릭 꺼짐';
       applyFont();
     }
 
@@ -734,7 +907,7 @@
       el.menuSheet.setAttribute('aria-hidden', String(!show));
     }
 
-    function splitTextToVisualLines(text) {
+    function splitTextToVisualLines(text, forceWrap = false) {
       const width = Math.max(180, el.reader.clientWidth || Math.min(window.innerWidth, 430) - 28);
       const measure = el.measureLine;
       measure.style.width = width + 'px';
@@ -743,7 +916,7 @@
       measure.style.fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--reader-font');
       measure.style.whiteSpace = 'pre-wrap';
 
-      if (!state.settings.wrap) {
+      if (!forceWrap && !state.settings.wrap) {
         return text.split('\n').map(v => v.length > 0 ? v : '');
       }
 
@@ -766,25 +939,37 @@
       return lines.length ? lines : [''];
     }
 
-    function paragraphToLineObjects(paragraph) {
-      const rawLines = paragraph.raw.split('\n');
+    function blockToLineObjects(block) {
+      if (block.kind === 'details') {
+        const lines = [{ kind:'details-summary', summary:block.summary, blank:false }];
+        const innerBlocks = block.bodyBlocks || [];
+        innerBlocks.forEach(inner => {
+          const innerLines = blockToLineObjects(inner).map(line => line.blank ? line : ({ ...line, kind: line.kind === 'quote' ? 'quote' : 'details-body-line' }));
+          lines.push(...innerLines);
+        });
+        lines.push({ blank:true });
+        return lines;
+      }
+
+      const rawLines = (block.raw || '').split('\n');
       const result = [];
+      const forceWrap = (block.markers || []).includes('double');
+
       rawLines.forEach((rawLine, idx) => {
-        const visualLines = splitTextToVisualLines(rawLine);
+        const visualLines = splitTextToVisualLines(rawLine, forceWrap);
         visualLines.forEach(vl => {
           const parsed = parseInline(vl);
           result.push({
+            kind: block.kind,
             blank: !vl.trim(),
             raw: vl,
             segments: parsed.segments,
-            markers: paragraph.markers
+            markers: block.markers || []
           });
         });
-        if (idx < rawLines.length - 1) {
-          result.push({ blank: true, raw: '', segments: [], markers: paragraph.markers });
-        }
+        if (idx < rawLines.length - 1) result.push({ blank:true });
       });
-      result.push({ blank: true, raw: '', segments: [], markers: paragraph.markers });
+      result.push({ blank:true });
       return result;
     }
 
@@ -793,9 +978,9 @@
       if (cacheKey === state.pageCacheKey && state.pages.length) return;
       state.pageCacheKey = cacheKey;
 
-      const paragraphs = paragraphsForCurrentFilter(book.paragraphs);
+      const blocks = blocksForCurrentFilter(book.blocks);
       const lines = [];
-      paragraphs.forEach(p => lines.push(...paragraphToLineObjects(p)));
+      blocks.forEach(block => lines.push(...blockToLineObjects(block)));
 
       const maxLines = getMaxLinesPerPage();
       const pages = [];
@@ -803,7 +988,7 @@
       let count = 0;
 
       for (const line of lines) {
-        const weight = line.blank ? 0.55 : 1;
+        const weight = line.blank ? 0.55 : (line.kind === 'h1' ? 1.8 : line.kind === 'h2' ? 1.5 : line.kind === 'h3' ? 1.35 : line.kind === 'details-summary' ? 1.15 : 1);
         if (count + weight > maxLines && current.length > 0) {
           pages.push(current);
           current = [line];
@@ -816,7 +1001,7 @@
 
       if (current.length) pages.push(current);
       if (!pages.length) {
-        pages.push([{ blank:false, raw:'표식 필터에 맞는 내용이 없어요.', segments:[{type:'plain', text:'표식 필터에 맞는 내용이 없어요.'}], markers:[] }]);
+        pages.push([{ blank:false, kind:'paragraph', raw:'표식 필터에 맞는 내용이 없어요.', segments:[{type:'plain', text:'표식 필터에 맞는 내용이 없어요.'}], markers:[] }]);
       }
       state.pages = pages;
       if (state.page > state.pages.length - 1) state.page = 0;
@@ -846,11 +1031,10 @@
         el.markerStats.innerHTML = '';
         return;
       }
-      const counts = { bold:0, star:0, double:0, single:0 };
-      book.paragraphs.forEach(p => p.markers.forEach(m => { if (counts[m] != null) counts[m] += 1; }));
+      const counts = blockToStatMarkers(book.blocks || []);
       const labels = { bold:'**', star:'*', double:'"', single:"'" };
       el.markerStats.innerHTML = Object.keys(counts).map(key =>
-        `<div class="stat-card"><div class="stat-title">${labels[key]}</div><div class="stat-meta">${counts[key]}개 문단</div></div>`
+        `<div class="stat-card"><div class="stat-title">${labels[key]}</div><div class="stat-meta">${counts[key]}개 블록</div></div>`
       ).join('');
     }
 
@@ -858,7 +1042,8 @@
       el.emptyState.classList.toggle('hidden', state.books.length > 0);
       el.bookList.innerHTML = state.books.map(book => {
         const title = escapeHtml(book.title || '제목 없음');
-        const meta = `${book.paragraphs.length}문단 · 마지막 ${Math.min((book.lastPage || 0)+1, Math.max(book.totalPages || 1, 1))}페이지`;
+        const blockCount = (book.blocks || []).length;
+        const meta = `${blockCount}블록 · 마지막 ${Math.min((book.lastPage || 0)+1, Math.max(book.totalPages || 1, 1))}페이지`;
         const recentBadge = state.settings.recentBookId === book.id ? ' · 최근 읽음' : '';
         return `
           <div class="book-card">
@@ -888,7 +1073,7 @@
       const lines = text.replace(/\r\n/g,'\n').split('\n').map(v => v.trim()).filter(Boolean);
       if (!lines.length) return fallback;
       const first = lines[0];
-      return first.replace(/^\*\*(.+)\*\*$/, '$1').slice(0, 60) || fallback;
+      return first.replace(/^#{1,3}\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').slice(0, 60) || fallback;
     }
 
     async function importTxt(file) {
@@ -898,7 +1083,7 @@
         id: 'book-' + now,
         title: extractTitle(text, file.name.replace(/\.txt$/i, '')),
         rawText: text,
-        paragraphs: buildParagraphs(text),
+        blocks: buildBookContent(text),
         lastPage: 0,
         totalPages: 1,
         createdAt: now,
@@ -1094,6 +1279,13 @@
         applyTheme();
         renderReader();
         scheduleSettingsSave();
+      }));
+
+      press(el.italicToggleBtn, () => {
+        state.settings.italic = !state.settings.italic;
+        applyTheme();
+        renderReader();
+        scheduleSettingsSave();
       });
 
       el.fontSizeRange.addEventListener('input', (e) => {
@@ -1181,7 +1373,7 @@
           id: 'sample-book',
           title: '샘플 책',
           rawText: SAMPLE_TEXT,
-          paragraphs: buildParagraphs(SAMPLE_TEXT),
+          blocks: buildBookContent(SAMPLE_TEXT),
           lastPage: 0,
           totalPages: 1,
           createdAt: now,
