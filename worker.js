@@ -1,18 +1,42 @@
-self.onmessage = async (e)=>{
-  const file = e.data.file;
-  const text = await file.text();
-  const lines = text.split('\n');
+self.onmessage = async (event) => {
+  const { type, file } = event.data || {};
+  if (type !== 'parseFile' || !file) return;
 
-  const result = [];
+  try {
+    const chunkSize = 256 * 1024;
+    let offset = 0;
+    let carry = '';
+    const lines = [];
+    let processed = 0;
 
-  for(let i=0;i<lines.length;i++){
-    result.push(lines[i]);
+    while (offset < file.size) {
+      const blob = file.slice(offset, offset + chunkSize);
+      let text = await blob.text();
+      offset += chunkSize;
 
-    if(i%500===0){
-      self.postMessage({type:'progress', percent:Math.floor((i/lines.length)*100)});
-      await new Promise(r=>setTimeout(r,0));
+      text = carry + text;
+      const parts = text.split('\n');
+      carry = parts.pop() ?? '';
+
+      for (const line of parts) {
+        lines.push(line);
+        processed++;
+        if (processed % 500 === 0) {
+          self.postMessage({ type: 'progress', value: offset / file.size });
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
     }
-  }
 
-  self.postMessage({type:'done', lines:result});
-}
+    if (carry.length || file.size === 0) {
+      lines.push(carry);
+    }
+
+    self.postMessage({ type: 'done', lines });
+  } catch (error) {
+    self.postMessage({
+      type: 'error',
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+};
