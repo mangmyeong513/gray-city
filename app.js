@@ -965,6 +965,15 @@ function bind() {
     scheduleSettingsSave();
   });
 
+  press(el.plainModeToggleBtn, () => {
+    state.settings.plainMode =
+      state.settings.plainMode === 'narration' ? 'dialogue' : 'narration';
+    resetPagination();
+    applyTheme();
+    renderReader();
+    scheduleSettingsSave();
+  });
+
   press(el.italicToggleBtn, () => {
     state.settings.italic = !state.settings.italic;
     applyTheme();
