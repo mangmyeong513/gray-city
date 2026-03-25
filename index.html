@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe6" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <title>TXT Reader Fast</title>
+  <title>TXT Reader Line Mode</title>
   <style>
     :root{
       --bg:#f4efe6;
@@ -16,8 +16,8 @@
       --muted:#8b7764;
       --border:rgba(46,36,25,.10);
       --accent:#20170f;
-      --reader-size:18px;
-      --reader-line:1.9;
+      --reader-size:17px;
+      --reader-line:1.88;
       --reader-font:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
       --safe-top:env(safe-area-inset-top,0px);
       --safe-bottom:env(safe-area-inset-bottom,0px);
@@ -30,6 +30,7 @@
       margin:0;padding:0;min-height:100%;
       background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
+      overflow-x:hidden;
     }
     body{display:flex;justify-content:center}
     button,input{font:inherit}
@@ -106,23 +107,30 @@
       padding-bottom:calc(var(--bottom-h) + var(--safe-bottom));
     }
     .reader{
-      height:100%;overflow:hidden;padding:10px 14px 12px;
+      height:100%;overflow:hidden;padding:8px 14px 10px;
     }
     .page-box{
-      height:100%;overflow:hidden;font-family:var(--reader-font);
-      display:block;
+      height:100%;
+      overflow:hidden;
+      font-family:var(--reader-font);
+      width:100%;
     }
-    .para{
-      margin:0 0 10px;
+    .page-line{
+      margin:0;
       font-size:var(--reader-size);
       line-height:var(--reader-line);
       color:var(--text);
-      word-break:keep-all;
-      overflow-wrap:break-word;
-      user-select:text;
       letter-spacing:-.015em;
+      white-space:pre-wrap;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+      max-width:100%;
+      user-select:text;
     }
-    .para.nowrap{white-space:pre;overflow:hidden;text-overflow:clip}
+    .line-gap{
+      height:calc(var(--reader-size) * 0.42);
+      min-height:8px;
+    }
     .seg-bold{font-weight:800}
     .seg-star{font-style:italic}
     .seg-double{opacity:.92}
@@ -145,7 +153,7 @@
     .bottom-bar.hide-ui{transform:translateY(110%);opacity:0}
     .reading-meta{
       display:flex;justify-content:space-between;align-items:center;
-      font-size:12px;color:var(--muted);padding:0 4px 8px;
+      font-size:12px;color:var(--muted);padding:0 4px 6px;
     }
     .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
     .panel{
@@ -177,6 +185,8 @@
       border-top:1px solid var(--border);border-top-left-radius:26px;border-top-right-radius:26px;
       padding:12px 14px calc(14px + var(--safe-bottom));
       transform:translateY(110%);transition:transform .16s ease;
+      max-height:min(82dvh, 720px);
+      overflow:auto;
     }
     .sheet.show{transform:translateY(0)}
     .handle{width:42px;height:5px;border-radius:999px;background:var(--border);margin:2px auto 10px}
@@ -195,7 +205,20 @@
     }
     .stat-title{font-size:14px;font-weight:800}
     .stat-meta{font-size:12px;color:var(--muted);margin-top:6px}
-    .footer-note{font-size:12px;color:var(--muted);line-height:1.55;padding:10px 2px 0}
+
+    .measure-line{
+      position:absolute;
+      left:-99999px;
+      top:0;
+      visibility:hidden;
+      pointer-events:none;
+      z-index:-1;
+      white-space:pre-wrap;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+      max-width:100%;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
+    }
 
     @media (max-width:380px){
       :root{--bottom-h:146px}
@@ -212,8 +235,8 @@
         <div class="brand">
           <div class="brand-mark">📚</div>
           <div>
-            <div class="brand-title">TXT Reader Fast</div>
-            <div class="brand-sub">가볍게, 한 장씩 넘기는 로컬 리더</div>
+            <div class="brand-title">TXT Reader Line</div>
+            <div class="brand-sub">줄 기반 페이지 분할</div>
           </div>
         </div>
         <button id="libraryMenuBtn" class="icon-btn" aria-label="메뉴">✦</button>
@@ -221,9 +244,9 @@
 
       <div class="library">
         <section class="hero">
-          <div class="hero-title">빠른 버전</div>
+          <div class="hero-title">줄 기준으로 끊기기</div>
           <div class="hero-sub">
-            여백을 줄이고 한 페이지 분량을 더 보수적으로 나눠서 글자가 잘리는 일을 줄였어요. 속도 우선 구조는 그대로예요.
+            글자가 사라지거나 오른쪽이 새는 걸 줄이기 위해, 이번엔 문단이 아니라 줄 단위로 페이지를 나눠요.
           </div>
           <button id="importTxtBtnTop" class="menu-btn">TXT 불러오기</button>
           <button id="installBtnTop" class="menu-btn">앱으로 설치</button>
@@ -280,11 +303,11 @@
           <div class="text-grid">
             <div class="setting-card">
               <div class="setting-label">글자 크기</div>
-              <input id="fontSizeRange" type="range" min="14" max="30" step="1" value="17" />
+              <input id="fontSizeRange" type="range" min="14" max="28" step="1" value="17" />
             </div>
             <div class="setting-card">
               <div class="setting-label">줄 간격</div>
-              <input id="lineHeightRange" type="range" min="150" max="235" step="5" value="190" />
+              <input id="lineHeightRange" type="range" min="150" max="220" step="5" value="188" />
             </div>
             <div class="setting-card">
               <div class="setting-label">글자 색상</div>
@@ -334,10 +357,9 @@
           <div id="markerStats" class="stats-grid"></div>
         </div>
       </div>
-      <div class="footer-note">이 버전은 속도 우선이에요. 메뉴의 업데이트 확인 버튼으로 새 파일을 다시 불러올 수 있어요.</div>
-      <input id="txtInput" class="hidden" type="file" accept=".txt,text/plain" />
-      <input id="fontInput" class="hidden" type="file" accept=".ttf,.otf,.woff,.woff2" />
     </section>
+
+    <div id="measureLine" class="measure-line"></div>
   </div>
 
   <script>
@@ -350,7 +372,7 @@
 
 가운데를 누르면 UI가 숨고, 오른쪽/왼쪽을 누르면 페이지가 넘어가요.`;
 
-    const DB_NAME = 'txt-reader-fast-db';
+    const DB_NAME = 'txt-reader-line-db';
     const DB_VERSION = 1;
     const BOOK_STORE = 'books';
     const SETTING_STORE = 'settings';
@@ -368,7 +390,7 @@
       settings: {
         theme: 'sepia',
         fontSize: 17,
-        lineHeight: 1.90,
+        lineHeight: 1.88,
         textColor: '#2e2419',
         wrap: true,
         markerFilter: 'all',
@@ -418,7 +440,8 @@
       lineHeightRange: document.getElementById('lineHeightRange'),
       textColorInput: document.getElementById('textColorInput'),
       wrapToggleBtn: document.getElementById('wrapToggleBtn'),
-      markerStats: document.getElementById('markerStats')
+      markerStats: document.getElementById('markerStats'),
+      measureLine: document.getElementById('measureLine')
     };
 
     let db;
@@ -530,28 +553,13 @@
       const parts = rawText.replace(/\r\n/g, '\n').split(/\n{2,}/);
       return parts.map((text, idx) => {
         const parsed = parseInline(text);
-        return {
-          id: idx,
-          raw: text,
-          segments: parsed.segments,
-          markers: parsed.markers,
-          weight: estimateParagraphWeight(text, parsed.markers)
-        };
+        return { id: idx, raw: text, segments: parsed.segments, markers: parsed.markers };
       }).filter(item => item.raw.trim().length);
     }
 
-    function estimateParagraphWeight(text, markers) {
-      let weight = text.length;
-      if (markers.includes('bold')) weight += 16;
-      if (markers.includes('star')) weight += 10;
-      if (markers.includes('double') || markers.includes('single')) weight += 8;
-      const lineBreaks = (text.match(/\n/g) || []).length;
-      weight += lineBreaks * 18;
-      return Math.max(30, weight);
-    }
-
-    function paragraphToHTML(paragraph) {
-      const inner = paragraph.segments.map(seg => {
+    function lineToHTML(lineObj) {
+      if (lineObj.blank) return '<div class="line-gap"></div>';
+      const inner = lineObj.segments.map(seg => {
         const t = escapeHtml(seg.text);
         if (seg.type === 'bold') return `<span class="seg-bold">${t}</span>`;
         if (seg.type === 'star') return `<span class="seg-star">${t}</span>`;
@@ -559,8 +567,7 @@
         if (seg.type === 'single') return `<span class="seg-single">'${t}'</span>`;
         return t;
       }).join('');
-      const wrapClass = state.settings.wrap ? '' : ' nowrap';
-      return `<p class="para${wrapClass}" style="color:${state.settings.textColor}">${inner}</p>`;
+      return `<p class="page-line" style="color:${state.settings.textColor}">${inner}</p>`;
     }
 
     function paragraphsForCurrentFilter(paragraphs) {
@@ -568,16 +575,23 @@
       return paragraphs.filter(p => p.markers.includes(state.settings.markerFilter));
     }
 
-    function getCharsPerPage() {
-      const width = Math.min(window.innerWidth, 430);
-      const height = window.innerHeight;
-      const base = width < 390 ? 620 : 760;
-      const heightBonus = Math.max(0, (height - 760) * 0.22);
-      const fontPenalty = (state.settings.fontSize - 18) * 72;
-      const linePenalty = (state.settings.lineHeight - 1.9) * 520;
-      const wrapPenalty = state.settings.wrap ? 0 : 120;
-      const fontBuffer = state.settings.customFontName ? 80 : 0;
-      return Math.max(220, Math.floor(base + heightBonus - fontPenalty - linePenalty - wrapPenalty - fontBuffer));
+    function getAvailableReaderHeight() {
+      const style = getComputedStyle(document.documentElement);
+      const topInset = parseFloat(style.getPropertyValue('--safe-top')) || 0;
+      const bottomInset = parseFloat(style.getPropertyValue('--safe-bottom')) || 0;
+      const headerH = parseFloat(style.getPropertyValue('--header-h')) || 58;
+      const bottomH = parseFloat(style.getPropertyValue('--bottom-h')) || 108;
+      return Math.max(220, window.innerHeight - topInset - bottomInset - headerH - bottomH);
+    }
+
+    function getLineHeightPx() {
+      return state.settings.fontSize * state.settings.lineHeight;
+    }
+
+    function getMaxLinesPerPage() {
+      const available = getAvailableReaderHeight();
+      const usable = available - 6;
+      return Math.max(6, Math.floor(usable / getLineHeightPx()));
     }
 
     function getPageCacheKey(book) {
@@ -713,32 +727,89 @@
       el.menuSheet.setAttribute('aria-hidden', String(!show));
     }
 
+    function splitTextToVisualLines(text) {
+      const width = Math.max(180, el.reader.clientWidth || Math.min(window.innerWidth, 430) - 28);
+      const measure = el.measureLine;
+      measure.style.width = width + 'px';
+      measure.style.fontSize = state.settings.fontSize + 'px';
+      measure.style.lineHeight = String(state.settings.lineHeight);
+      measure.style.fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--reader-font');
+      measure.style.whiteSpace = state.settings.wrap ? 'pre-wrap' : 'pre-wrap';
+
+      if (!state.settings.wrap) {
+        return text.split('\n');
+      }
+
+      const chunks = text.split(/(\s+)/).filter(v => v.length > 0);
+      const lines = [];
+      let current = '';
+
+      for (const chunk of chunks) {
+        const test = current + chunk;
+        measure.textContent = test;
+        if (measure.scrollWidth > measure.clientWidth && current) {
+          lines.push(current.trimEnd());
+          current = chunk.trimStart();
+          if (!current) current = chunk;
+        } else {
+          current = test;
+        }
+      }
+      if (current) lines.push(current.trimEnd());
+      return lines.length ? lines : [''];
+    }
+
+    function paragraphToLineObjects(paragraph) {
+      const rawLines = paragraph.raw.split('\n');
+      const result = [];
+      rawLines.forEach((rawLine, idx) => {
+        const visualLines = splitTextToVisualLines(rawLine);
+        visualLines.forEach(vl => {
+          const parsed = parseInline(vl);
+          result.push({
+            blank: !vl.trim(),
+            raw: vl,
+            segments: parsed.segments,
+            markers: paragraph.markers
+          });
+        });
+        if (idx < rawLines.length - 1) {
+          result.push({ blank: true, raw: '', segments: [], markers: paragraph.markers });
+        }
+      });
+      result.push({ blank: true, raw: '', segments: [], markers: paragraph.markers });
+      return result;
+    }
+
     function paginateBook(book) {
       const cacheKey = getPageCacheKey(book);
       if (cacheKey === state.pageCacheKey && state.pages.length) return;
       state.pageCacheKey = cacheKey;
 
       const paragraphs = paragraphsForCurrentFilter(book.paragraphs);
-      const charsPerPage = getCharsPerPage();
+      const lines = [];
+      paragraphs.forEach(p => lines.push(...paragraphToLineObjects(p)));
+
+      const maxLines = getMaxLinesPerPage();
       const pages = [];
       let current = [];
       let count = 0;
 
-      for (const paragraph of paragraphs) {
-        const w = paragraph.weight;
-        if (count + w > charsPerPage && current.length > 0) {
+      for (const line of lines) {
+        const weight = line.blank ? 0.55 : 1;
+        if (count + weight > maxLines && current.length > 0) {
           pages.push(current);
-          current = [paragraph];
-          count = w;
+          current = [line];
+          count = weight;
         } else {
-          current.push(paragraph);
-          count += w;
+          current.push(line);
+          count += weight;
         }
       }
 
       if (current.length) pages.push(current);
       if (!pages.length) {
-        pages.push([{ raw:'표식 필터에 맞는 내용이 없어요.', segments:[{type:'plain', text:'표식 필터에 맞는 내용이 없어요.'}], markers:[], weight:40 }]);
+        pages.push([{ blank:false, raw:'표식 필터에 맞는 내용이 없어요.', segments:[{type:'plain', text:'표식 필터에 맞는 내용이 없어요.'}], markers:[] }]);
       }
       state.pages = pages;
       if (state.page > state.pages.length - 1) state.page = 0;
@@ -750,7 +821,7 @@
 
       paginateBook(book);
       const page = state.pages[state.page] || [];
-      el.reader.innerHTML = `<div class="page-box">${page.map(paragraphToHTML).join('')}</div>`;
+      el.reader.innerHTML = `<div class="page-box">${page.map(lineToHTML).join('')}</div>`;
 
       const total = state.pages.length || 1;
       const percent = Math.round(((state.page + 1) / total) * 100);
@@ -887,25 +958,18 @@
       }
     }
 
-
     async function checkForAppUpdate() {
       try {
         if ('serviceWorker' in navigator) {
           const registration = await navigator.serviceWorker.getRegistration('./');
-          if (registration) {
-            await registration.update();
-          }
+          if (registration) await registration.update();
         }
-
         if ('caches' in window) {
           const keys = await caches.keys();
           await Promise.all(keys.map(key => caches.delete(key)));
         }
-
         el.updateNote.textContent = '최신 버전 다시 불러오는 중...';
-        setTimeout(() => {
-          window.location.reload();
-        }, 250);
+        setTimeout(() => window.location.reload(), 250);
       } catch (err) {
         console.log('update failed', err);
         el.updateNote.textContent = '업데이트 확인에 실패했어요. 다시 시도해 주세요.';
