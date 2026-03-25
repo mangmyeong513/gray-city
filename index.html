@@ -1,20 +1,154 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TXT Reader</title>
-<style>
-body{margin:0;background:#f4efe6;color:#2e2419;font-family:sans-serif}
-#reader{padding:16px;font-size:16px;line-height:1.7}
-.page-line{margin-bottom:10px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TXT Reader Basic Local</title>
+  <style>
+    :root{
+      --bg:#f6f0e6;
+      --text:#2b241c;
+      --muted:#7d6f61;
+      --card:#fffaf3;
+      --border:rgba(43,36,28,.10);
+      --safe-top:env(safe-area-inset-top,0px);
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{
+      margin:0;padding:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
+    }
+    body{min-height:100dvh}
+    .app{max-width:760px;margin:0 auto;padding:calc(14px + var(--safe-top)) 14px calc(18px + var(--safe-bottom))}
+    .top{
+      position:sticky;top:0;z-index:10;
+      padding-bottom:10px;background:linear-gradient(to bottom,var(--bg) 80%, rgba(246,240,230,0));
+    }
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:20px;padding:14px;
+      box-shadow:0 1px 4px rgba(0,0,0,.03);
+    }
+    .title{font-size:20px;font-weight:800;letter-spacing:-.02em}
+    .sub{font-size:13px;color:var(--muted);line-height:1.5;margin-top:6px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    .btn{
+      appearance:none;border:1px solid var(--border);background:#2b241c;color:#fff;
+      border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;
+    }
+    .btn.secondary{background:var(--card);color:var(--text)}
+    .status{font-size:13px;color:var(--muted);min-height:20px}
+    .reader{
+      margin-top:14px;background:var(--card);border:1px solid var(--border);border-radius:22px;
+      padding:18px 16px;min-height:60dvh;
+    }
+    .meta{font-size:13px;color:var(--muted);margin-bottom:14px}
+    .line{
+      margin:0 0 10px;
+      font-size:16px;
+      line-height:1.78;
+      white-space:pre-wrap;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+    }
+    .empty{
+      color:var(--muted);font-size:14px;line-height:1.7;
+    }
+  </style>
 </head>
 <body>
+  <div class="app">
+    <div class="top">
+      <div class="card">
+        <div class="title">TXT Reader Basic</div>
+        <div class="sub">로컬 파일에서도 바로 열리게 worker 없이 만든 안정형 버전이에요.</div>
+        <div class="row">
+          <button id="pickBtn" class="btn">TXT 불러오기</button>
+          <button id="clearBtn" class="btn secondary">지우기</button>
+          <input id="fileInput" type="file" accept=".txt,text/plain" hidden />
+        </div>
+        <div id="status" class="row status"></div>
+      </div>
+    </div>
 
-<input type="file" id="txtInput" accept=".txt">
-<div id="reader">파일 선택해주세요 📂</div>
+    <div id="reader" class="reader">
+      <div class="empty">TXT 파일을 선택하면 여기에 내용이 보여요.</div>
+    </div>
+  </div>
 
-<script src="app.js"></script>
+  <script>
+    const pickBtn = document.getElementById('pickBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const fileInput = document.getElementById('fileInput');
+    const statusEl = document.getElementById('status');
+    const readerEl = document.getElementById('reader');
+
+    function setStatus(text) {
+      statusEl.textContent = text || '';
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;');
+    }
+
+    function renderLines(lines, fileName) {
+      let html = '<div class="meta">' + escapeHtml(fileName) + ' · ' + lines.length.toLocaleString() + '줄</div>';
+
+      for (let i = 0; i < lines.length; i++) {
+        html += '<p class="line">' + escapeHtml(lines[i]) + '</p>';
+
+        if (i > 0 && i % 300 === 0) {
+          readerEl.innerHTML = html;
+        }
+      }
+
+      requestAnimationFrame(() => {
+        readerEl.innerHTML = html;
+      });
+    }
+
+    async function openFile(file) {
+      try {
+        pickBtn.disabled = true;
+        setStatus(file.size > 1024 * 1024 ? '큰 파일 읽는 중...' : '불러오는 중...');
+        readerEl.innerHTML = '<div class="empty">파일을 읽는 중이에요...</div>';
+
+        const text = await file.text();
+
+        setStatus('줄 나누는 중...');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const lines = text.replace(/\r\n/g, '\n').split('\n');
+
+        setStatus('본문 그리는 중...');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        renderLines(lines, file.name);
+        setStatus('완료 · ' + (file.size / 1024 / 1024).toFixed(2) + 'MB');
+      } catch (error) {
+        console.error(error);
+        setStatus('불러오기에 실패했어요.');
+        readerEl.innerHTML = '<div class="empty">파일을 읽는 중 오류가 났어요. 다시 시도해 주세요.</div>';
+      } finally {
+        pickBtn.disabled = false;
+        fileInput.value = '';
+      }
+    }
+
+    pickBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) openFile(file);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      setStatus('');
+      readerEl.innerHTML = '<div class="empty">TXT 파일을 선택하면 여기에 내용이 보여요.</div>';
+    });
+  </script>
 </body>
 </html>
