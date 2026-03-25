@@ -22,7 +22,7 @@
       --safe-top:env(safe-area-inset-top,0px);
       --safe-bottom:env(safe-area-inset-bottom,0px);
       --header-h:58px;
-      --bottom-h:126px;
+      --bottom-h:108px;
     }
 
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -69,7 +69,7 @@
       border-radius:16px;cursor:pointer;
     }
     .icon-btn{width:42px;height:42px;display:grid;place-items:center;font-size:18px}
-    .menu-btn{width:100%;height:52px;padding:0 16px;text-align:left;font-weight:800;margin-top:12px}
+    .menu-btn{width:100%;height:48px;padding:0 14px;text-align:left;font-weight:800;margin-top:10px}
     .chip-btn{
       height:36px;padding:0 12px;border-radius:999px;background:transparent;
       font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -106,20 +106,21 @@
       padding-bottom:calc(var(--bottom-h) + var(--safe-bottom));
     }
     .reader{
-      height:100%;overflow:hidden;padding:22px 22px 24px;
+      height:100%;overflow:hidden;padding:10px 14px 12px;
     }
     .page-box{
       height:100%;overflow:hidden;font-family:var(--reader-font);
+      display:block;
     }
     .para{
-      margin:0 0 15px;
+      margin:0 0 10px;
       font-size:var(--reader-size);
       line-height:var(--reader-line);
       color:var(--text);
       word-break:keep-all;
       overflow-wrap:break-word;
       user-select:text;
-      letter-spacing:-.01em;
+      letter-spacing:-.015em;
     }
     .para.nowrap{white-space:pre;overflow:hidden;text-overflow:clip}
     .seg-bold{font-weight:800}
@@ -138,7 +139,7 @@
     .bottom-bar{
       position:fixed;left:0;right:0;bottom:0;z-index:24;
       border-top:1px solid var(--border);background:var(--bg);
-      padding:10px 12px calc(12px + var(--safe-bottom));
+      padding:8px 10px calc(8px + var(--safe-bottom));
       transition:transform .16s ease, opacity .16s ease;
     }
     .bottom-bar.hide-ui{transform:translateY(110%);opacity:0}
@@ -146,17 +147,17 @@
       display:flex;justify-content:space-between;align-items:center;
       font-size:12px;color:var(--muted);padding:0 4px 8px;
     }
-    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
     .panel{
       display:none;border:1px solid var(--border);background:var(--surface-2);
-      border-radius:20px;padding:10px;
+      border-radius:18px;padding:8px;
     }
     .panel.active{display:block}
     .theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .text-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .text-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .setting-card{
       background:var(--surface);border:1px solid var(--border);
-      border-radius:16px;padding:10px;
+      border-radius:14px;padding:8px;
     }
     .setting-label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px}
     .marker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
@@ -197,7 +198,7 @@
     .footer-note{font-size:12px;color:var(--muted);line-height:1.55;padding:10px 2px 0}
 
     @media (max-width:380px){
-      :root{--bottom-h:164px}
+      :root{--bottom-h:146px}
       .text-grid{grid-template-columns:1fr}
       .marker-grid{grid-template-columns:repeat(3,1fr)}
       .brand-sub{max-width:180px}
@@ -222,7 +223,7 @@
         <section class="hero">
           <div class="hero-title">빠른 버전</div>
           <div class="hero-sub">
-            DOM 측정 페이지 나누기를 버리고, 빠른 추정 방식으로 바꿨어요. 정확도는 조금 줄고 속도는 훨씬 올라가요.
+            여백을 줄이고 한 페이지 분량을 더 보수적으로 나눠서 글자가 잘리는 일을 줄였어요. 속도 우선 구조는 그대로예요.
           </div>
           <button id="importTxtBtnTop" class="menu-btn">TXT 불러오기</button>
           <button id="installBtnTop" class="menu-btn">앱으로 설치</button>
@@ -279,7 +280,7 @@
           <div class="text-grid">
             <div class="setting-card">
               <div class="setting-label">글자 크기</div>
-              <input id="fontSizeRange" type="range" min="14" max="30" step="1" value="18" />
+              <input id="fontSizeRange" type="range" min="14" max="30" step="1" value="17" />
             </div>
             <div class="setting-card">
               <div class="setting-label">줄 간격</div>
@@ -366,7 +367,7 @@
       activeTab: 'theme',
       settings: {
         theme: 'sepia',
-        fontSize: 18,
+        fontSize: 17,
         lineHeight: 1.90,
         textColor: '#2e2419',
         wrap: true,
@@ -570,12 +571,13 @@
     function getCharsPerPage() {
       const width = Math.min(window.innerWidth, 430);
       const height = window.innerHeight;
-      const base = width < 390 ? 820 : 980;
-      const heightBonus = Math.max(0, (height - 760) * 0.45);
-      const fontPenalty = (state.settings.fontSize - 18) * 55;
-      const linePenalty = (state.settings.lineHeight - 1.9) * 420;
-      const wrapPenalty = state.settings.wrap ? 0 : 160;
-      return Math.max(320, Math.floor(base + heightBonus - fontPenalty - linePenalty - wrapPenalty));
+      const base = width < 390 ? 620 : 760;
+      const heightBonus = Math.max(0, (height - 760) * 0.22);
+      const fontPenalty = (state.settings.fontSize - 18) * 72;
+      const linePenalty = (state.settings.lineHeight - 1.9) * 520;
+      const wrapPenalty = state.settings.wrap ? 0 : 120;
+      const fontBuffer = state.settings.customFontName ? 80 : 0;
+      return Math.max(220, Math.floor(base + heightBonus - fontPenalty - linePenalty - wrapPenalty - fontBuffer));
     }
 
     function getPageCacheKey(book) {
