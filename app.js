@@ -578,22 +578,36 @@ function extractTitle(text, fallback='제목 없음') {
 }
 
 async function importTxt(file) {
-  const text = await file.text();
-  const now = Date.now();
-  const book = {
-    id: 'book-' + now,
-    title: extractTitle(text, file.name.replace(/\.txt$/i, '')),
-    rawText: text,
-    blocks: buildBookContent(text),
-    lastPage: 0,
-    totalPages: 1,
-    createdAt: now,
-    updatedAt: now
+  const worker = new Worker('./worker.js');
+
+  worker.postMessage({ type: 'parseFile', file });
+
+  worker.onmessage = async (e) => {
+
+    if (e.data.type === 'done') {
+      const blocks = e.data.blocks;
+
+      const now = Date.now();
+
+      const book = {
+        id: 'book-' + now,
+        title: file.name,
+        blocks,
+        lastPage: 0,
+        totalPages: 1,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      await idbPutBook(book);
+      await loadBooks();
+      await openBook(book.id);
+    }
+
+    if (e.data.type === 'error') {
+      alert('파일 읽기 실패 😢');
+    }
   };
-  await idbPutBook(book);
-  await loadBooks();
-  await openBook(book.id);
-  showSheet(false);
 }
 async function openBook(id) {
   const book = await idbGetBook(id);
