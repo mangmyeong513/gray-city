@@ -875,6 +875,7 @@ function applyTheme() {
   el.textColorInput.value = state.settings.textColor;
   el.wrapToggleBtn.textContent = state.settings.wrap ? '기본 줄바꿈 켜짐' : '기본 줄바꿈 꺼짐';
   el.italicToggleBtn.textContent = state.settings.italic ? '이탤릭 켜짐' : '이탤릭 꺼짐';
+  el.plainModeToggleBtn.textContent = state.settings.plainMode === 'dialogue' ? '대사형' : '서술형';
 
   applyFont();
 }
