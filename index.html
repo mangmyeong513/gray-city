@@ -25,27 +25,15 @@
     html,body{
       margin:0;padding:0;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
-      height:100%;
-      overflow:hidden;
+      height:100%;overflow:hidden;
     }
     .app{max-width:760px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom)}
     .top{
-      flex:0 0 auto;
-      height:var(--top-h);
-      padding:10px 12px 8px;
-      background:var(--bg);
-      border-bottom:1px solid var(--border);
+      flex:0 0 auto;height:var(--top-h);padding:10px 12px 8px;background:var(--bg);border-bottom:1px solid var(--border);
     }
     .topcard{
-      height:100%;
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:10px 12px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      gap:8px;
+      height:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:10px 12px;
+      display:flex;flex-direction:column;justify-content:center;gap:8px;
     }
     .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
     .title{font-size:17px;font-weight:800;letter-spacing:-.02em}
@@ -56,78 +44,36 @@
       border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;cursor:pointer;
     }
     .btn.secondary{background:var(--card);color:var(--text)}
-    .main{
-      flex:1 1 auto;
-      min-height:0;
-      padding:10px 12px;
-    }
+    .main{flex:1 1 auto;min-height:0;padding:10px 12px}
     .reader{
-      height:100%;
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:14px 14px 10px;
-      overflow:hidden;
-      position:relative;
+      height:100%;background:var(--card);border:1px solid var(--border);border-radius:18px;
+      padding:14px 14px 10px;overflow:hidden;position:relative;
     }
-    .page{
-      height:100%;
-      overflow:hidden;
-    }
-    .empty{
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.7;
-    }
-    .meta{
-      font-size:12px;color:var(--muted);margin-bottom:10px;
-    }
+    .page{height:100%;overflow:hidden}
+    .empty{color:var(--muted);font-size:14px;line-height:1.7}
+    .meta{font-size:12px;color:var(--muted);margin-bottom:10px}
     .para{
-      margin:0 0 14px;
-      font-size:var(--font-size);
-      line-height:var(--line-height);
-      white-space:pre-wrap;
-      word-break:break-word;
-      overflow-wrap:anywhere;
+      margin:0 0 14px;font-size:var(--font-size);line-height:var(--line-height);
+      white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
     }
     .seg-bold{font-weight:800}
     .seg-star{font-style:italic;opacity:.68}
     .seg-double{color:#5b4431}
-    details.acc{
-      margin:0 0 14px;
-      border:1px solid var(--border);
-      border-radius:14px;
-      background:rgba(255,255,255,.35);
-      overflow:hidden;
+    .details-card{
+      margin:0 0 14px;border:1px solid var(--border);border-radius:14px;
+      background:rgba(255,255,255,.35);padding:12px 14px;
     }
-    details.acc summary{
-      list-style:none;
-      cursor:pointer;
-      padding:12px 14px;
-      font-size:14px;
-      font-weight:700;
-      color:var(--text);
-      background:rgba(0,0,0,.02);
+    .details-head{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
     }
-    details.acc summary::-webkit-details-marker{display:none}
-    .acc-body{padding:12px 14px 2px}
+    .details-title{font-size:14px;font-weight:700}
+    .details-open{font-size:12px;color:var(--muted)}
     .bottom{
-      flex:0 0 auto;
-      height:var(--bottom-h);
-      padding:8px 12px 10px;
-      background:var(--bg);
-      border-top:1px solid var(--border);
+      flex:0 0 auto;height:var(--bottom-h);padding:8px 12px 10px;background:var(--bg);border-top:1px solid var(--border);
     }
     .bottomcard{
-      height:100%;
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:8px 10px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      gap:6px;
+      height:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:8px 10px;
+      display:flex;flex-direction:column;justify-content:center;gap:6px;
     }
     .navrow{display:flex;gap:8px;align-items:center}
     .grow{flex:1}
@@ -137,11 +83,24 @@
       position:absolute;left:-99999px;top:0;width:min(100vw,760px);
       visibility:hidden;pointer-events:none;
     }
-    .measure-box{
-      background:var(--card);
-      border:1px solid transparent;
-      padding:14px 14px 10px;
-      width:100%;
+    .measure-box{background:var(--card);padding:14px 14px 10px;width:100%}
+    .overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;z-index:50;
+      padding:calc(14px + var(--safe-top)) 12px calc(14px + var(--safe-bottom));
+    }
+    .overlay.show{display:block}
+    .overlay-card{
+      width:100%;height:100%;max-width:760px;margin:0 auto;
+      background:var(--card);border:1px solid var(--border);border-radius:20px;
+      display:flex;flex-direction:column;overflow:hidden;
+    }
+    .overlay-top{
+      flex:0 0 auto;padding:12px 14px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .overlay-title{font-size:15px;font-weight:800;letter-spacing:-.02em}
+    .overlay-body{
+      flex:1 1 auto;overflow:auto;padding:14px;
     }
   </style>
 </head>
@@ -184,8 +143,16 @@
     </div>
   </div>
 
-  <div class="measure-wrap">
-    <div id="measureBox" class="measure-box"></div>
+  <div class="measure-wrap"><div id="measureBox" class="measure-box"></div></div>
+
+  <div id="detailsOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-top">
+        <div id="overlayTitle" class="overlay-title">상세 보기</div>
+        <button id="closeOverlayBtn" class="btn secondary">닫기</button>
+      </div>
+      <div id="overlayBody" class="overlay-body"></div>
+    </div>
   </div>
 
   <script src="./app.js"></script>

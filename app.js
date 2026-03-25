@@ -10,8 +10,12 @@ const pageInfoEl = document.getElementById('pageInfo');
 const pageRangeEl = document.getElementById('pageRange');
 const readerEl = document.getElementById('reader');
 const measureBox = document.getElementById('measureBox');
+const detailsOverlay = document.getElementById('detailsOverlay');
+const overlayTitle = document.getElementById('overlayTitle');
+const overlayBody = document.getElementById('overlayBody');
+const closeOverlayBtn = document.getElementById('closeOverlayBtn');
 
-const STORE_KEY = 'txt-reader-paged-state-v1';
+const STORE_KEY = 'txt-reader-paged-state-v2';
 
 let installPrompt = null;
 let parseWorker = null;
@@ -27,27 +31,20 @@ function setStatus(text) {
 }
 
 function saveState() {
-  const save = {
+  localStorage.setItem(STORE_KEY, JSON.stringify({
     fileName: state.fileName,
     pageIndex: state.pageIndex,
     pages: state.pages
-  };
-  localStorage.setItem(STORE_KEY, JSON.stringify(save));
+  }));
 }
 
 function loadSavedState() {
-  try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }
+  catch { return null; }
 }
 
 function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function renderInline(text) {
@@ -58,49 +55,42 @@ function renderInline(text) {
   let match;
 
   while ((match = regex.exec(src)) !== null) {
-    if (match.index > last) {
-      result += escapeHtml(src.slice(last, match.index));
-    }
-
-    if (match[1] != null) {
-      result += '<span class="seg-bold">' + escapeHtml(match[1]) + '</span>';
-    } else if (match[2] != null) {
-      result += '<span class="seg-star">' + escapeHtml(match[2]) + '</span>';
-    } else if (match[3] != null) {
-      result += '<span class="seg-double">"' + escapeHtml(match[3]) + '"</span>';
-    }
-
+    if (match.index > last) result += escapeHtml(src.slice(last, match.index));
+    if (match[1] != null) result += '<span class="seg-bold">' + escapeHtml(match[1]) + '</span>';
+    else if (match[2] != null) result += '<span class="seg-star">' + escapeHtml(match[2]) + '</span>';
+    else if (match[3] != null) result += '<span class="seg-double">"' + escapeHtml(match[3]) + '"</span>';
     last = regex.lastIndex;
   }
-
-  if (last < src.length) {
-    result += escapeHtml(src.slice(last));
-  }
-
+  if (last < src.length) result += escapeHtml(src.slice(last));
   return result;
 }
 
 function blockToHtml(block) {
   if (block.kind === 'details') {
-    const bodyParagraphs = String(block.body || '').split(/\n{2,}/).filter(Boolean);
-    let bodyHtml = '';
-    for (const para of bodyParagraphs) {
-      bodyHtml += '<p class="para">' + renderInline(para) + '</p>';
-    }
-    return '<details class="acc"><summary>' +
-      renderInline(block.title) +
-      '</summary><div class="acc-body">' +
-      bodyHtml +
-      '</div></details>';
+    return '<div class="details-card" data-details-index="' + block.index + '">' +
+      '<div class="details-head">' +
+      '<div class="details-title">' + renderInline(block.title) + '</div>' +
+      '<div class="details-open">열기</div>' +
+      '</div>' +
+      '</div>';
   }
-
   return '<p class="para">' + renderInline(block.text) + '</p>';
+}
+
+function fullDetailsHtml(block) {
+  const bodyParagraphs = String(block.body || '').split(/\n{2,}/).filter(Boolean);
+  let html = '';
+  for (const para of bodyParagraphs) {
+    html += '<p class="para">' + renderInline(para) + '</p>';
+  }
+  return html || '<div class="empty">내용이 없어요.</div>';
 }
 
 function parseBlocksFallback(text) {
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const blocks = [];
   let i = 0;
+  let index = 0;
 
   while (i < lines.length) {
     const line = lines[i];
@@ -115,7 +105,7 @@ function parseBlocksFallback(text) {
         i++;
       }
       if (i < lines.length) i++;
-      blocks.push({ kind: 'details', title, body: body.join('\n') });
+      blocks.push({ kind: 'details', title, body: body.join('\n'), index: index++ });
       continue;
     }
 
@@ -133,7 +123,7 @@ function parseBlocksFallback(text) {
       para.push(current);
       i++;
     }
-    blocks.push({ kind: 'paragraph', text: para.join('\n') });
+    blocks.push({ kind: 'paragraph', text: para.join('\n'), index: index++ });
   }
 
   return blocks;
@@ -147,12 +137,8 @@ function getWorker() {
 function parseWithWorker(file) {
   return new Promise((resolve, reject) => {
     let worker;
-    try {
-      worker = getWorker();
-    } catch (error) {
-      reject(error);
-      return;
-    }
+    try { worker = getWorker(); }
+    catch (error) { reject(error); return; }
 
     const onMessage = (event) => {
       const data = event.data || {};
@@ -161,26 +147,14 @@ function parseWithWorker(file) {
         setStatus('불러오는 중... ' + percent + '%');
         return;
       }
-      if (data.type === 'done') {
-        cleanup();
-        resolve(data.blocks || []);
-      }
-      if (data.type === 'error') {
-        cleanup();
-        reject(new Error(data.message || 'parse failed'));
-      }
+      if (data.type === 'done') { cleanup(); resolve(data.blocks || []); }
+      if (data.type === 'error') { cleanup(); reject(new Error(data.message || 'parse failed')); }
     };
-
-    const onError = (error) => {
-      cleanup();
-      reject(error);
-    };
-
+    const onError = (error) => { cleanup(); reject(error); };
     function cleanup() {
       worker.removeEventListener('message', onMessage);
       worker.removeEventListener('error', onError);
     }
-
     worker.addEventListener('message', onMessage);
     worker.addEventListener('error', onError);
     worker.postMessage({ type: 'parseFile', file });
@@ -195,32 +169,26 @@ function buildPages(blocks) {
   measureBox.innerHTML = '';
 
   let current = [];
-  let currentHtml = '';
   let used = 0;
 
   for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
-    const piece = blockToHtml(block);
-
+    const piece = blockToHtml(blocks[i]);
     measureBox.innerHTML = piece;
-    const blockHeight = Math.ceil(measureBox.scrollHeight);
+    const h = Math.ceil(measureBox.scrollHeight);
 
     if (!current.length) {
       current.push(i);
-      currentHtml = piece;
-      used = blockHeight;
+      used = h;
       continue;
     }
 
-    if (used + blockHeight <= available) {
+    if (used + h <= available) {
       current.push(i);
-      currentHtml += piece;
-      used += blockHeight;
+      used += h;
     } else {
       pages.push(current.slice());
       current = [i];
-      currentHtml = piece;
-      used = blockHeight;
+      used = h;
     }
   }
 
@@ -240,9 +208,7 @@ function renderPage() {
 
   const pageIndexes = state.pages[state.pageIndex] || [];
   let html = '<div class="meta">' + escapeHtml(state.fileName) + '</div>';
-  for (const idx of pageIndexes) {
-    html += blockToHtml(state.blocks[idx]);
-  }
+  for (const idx of pageIndexes) html += blockToHtml(state.blocks[idx]);
   pageEl.innerHTML = html;
 
   const total = state.pages.length;
@@ -264,8 +230,7 @@ async function openFile(file) {
       blocks = await parseWithWorker(file);
     } catch (error) {
       console.warn('worker fallback', error);
-      const text = await file.text();
-      blocks = parseBlocksFallback(text);
+      blocks = parseBlocksFallback(await file.text());
     }
 
     setStatus('문단 페이지 나누는 중...');
@@ -303,13 +268,23 @@ function resumeLast() {
   }
 }
 
-pickBtn.addEventListener('click', () => fileInput.click());
+function openDetailsByIndex(idx) {
+  const block = state.blocks[idx];
+  if (!block || block.kind !== 'details') return;
+  overlayTitle.innerHTML = renderInline(block.title);
+  overlayBody.innerHTML = fullDetailsHtml(block);
+  detailsOverlay.classList.add('show');
+}
 
+function closeDetails() {
+  detailsOverlay.classList.remove('show');
+}
+
+pickBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => {
   const file = e.target.files && e.target.files[0];
   if (file) openFile(file);
 });
-
 resumeBtn.addEventListener('click', () => resumeLast());
 
 prevBtn.addEventListener('click', () => {
@@ -330,6 +305,17 @@ pageRangeEl.addEventListener('input', () => {
   if (!state.pages.length) return;
   state.pageIndex = Math.max(0, Math.min(Number(pageRangeEl.value) - 1, state.pages.length - 1));
   renderPage();
+});
+
+pageEl.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-details-index]');
+  if (!card) return;
+  openDetailsByIndex(Number(card.dataset.detailsIndex));
+});
+
+closeOverlayBtn.addEventListener('click', closeDetails);
+detailsOverlay.addEventListener('click', (e) => {
+  if (e.target === detailsOverlay) closeDetails();
 });
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -371,10 +357,7 @@ window.addEventListener('resize', () => {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    try {
-      await navigator.serviceWorker.register('./sw.js', { scope: './' });
-    } catch (error) {
-      console.warn('sw register failed', error);
-    }
+    try { await navigator.serviceWorker.register('./sw.js', { scope: './' }); }
+    catch (error) { console.warn('sw register failed', error); }
   });
 }

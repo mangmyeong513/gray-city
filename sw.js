@@ -1,4 +1,4 @@
-const CACHE = 'txt-reader-paged-v1';
+const CACHE = 'txt-reader-paged-v2';
 const ASSETS = ['./','./index.html','./app.js','./worker.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', event => {

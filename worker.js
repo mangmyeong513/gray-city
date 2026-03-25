@@ -19,6 +19,7 @@ function parseBlocks(text) {
   const blocks = [];
   let i = 0;
   let processed = 0;
+  let index = 0;
 
   while (i < lines.length) {
     const line = lines[i];
@@ -35,7 +36,7 @@ function parseBlocks(text) {
         if (processed % 500 === 0) self.postMessage({ type: 'progress', value: i / lines.length });
       }
       if (i < lines.length) i++;
-      blocks.push({ kind: 'details', title, body: body.join('\n') });
+      blocks.push({ kind: 'details', title, body: body.join('\n'), index: index++ });
       continue;
     }
 
@@ -55,7 +56,7 @@ function parseBlocks(text) {
       processed++;
       if (processed % 500 === 0) self.postMessage({ type: 'progress', value: i / lines.length });
     }
-    blocks.push({ kind: 'paragraph', text: para.join('\n') });
+    blocks.push({ kind: 'paragraph', text: para.join('\n'), index: index++ });
   }
 
   return blocks;
