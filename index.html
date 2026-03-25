@@ -318,6 +318,7 @@
         <button id="resetFontBtn" class="sheet-btn">기본 서체로 되돌리기<span class="sheet-note">커스텀 서체 제거</span></button>
         <button id="goLibraryBtn" class="sheet-btn">서재로 가기<span class="sheet-note">저장된 책 목록 보기</span></button>
         <button id="installBtnSheet" class="sheet-btn">앱으로 설치<span id="installNote" class="sheet-note">설치 가능하면 홈 화면에 추가돼요</span></button>
+        <button id="updateAppBtn" class="sheet-btn">업데이트 확인<span id="updateNote" class="sheet-note">새 버전이 있으면 다시 불러와요</span></button>
 
         <div class="font-chip">
           <div>
@@ -332,7 +333,7 @@
           <div id="markerStats" class="stats-grid"></div>
         </div>
       </div>
-      <div class="footer-note">이 버전은 속도 우선이에요. 페이지는 화면 측정 대신 빠른 추정 방식으로 나눠요.</div>
+      <div class="footer-note">이 버전은 속도 우선이에요. 메뉴의 업데이트 확인 버튼으로 새 파일을 다시 불러올 수 있어요.</div>
       <input id="txtInput" class="hidden" type="file" accept=".txt,text/plain" />
       <input id="fontInput" class="hidden" type="file" accept=".ttf,.otf,.woff,.woff2" />
     </section>
@@ -388,6 +389,8 @@
       installBtnTop: document.getElementById('installBtnTop'),
       installBtnSheet: document.getElementById('installBtnSheet'),
       installNote: document.getElementById('installNote'),
+      updateAppBtn: document.getElementById('updateAppBtn'),
+      updateNote: document.getElementById('updateNote'),
       goLibraryBtn: document.getElementById('goLibraryBtn'),
       txtInput: document.getElementById('txtInput'),
       fontInput: document.getElementById('fontInput'),
@@ -882,6 +885,31 @@
       }
     }
 
+
+    async function checkForAppUpdate() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration('./');
+          if (registration) {
+            await registration.update();
+          }
+        }
+
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+
+        el.updateNote.textContent = '최신 버전 다시 불러오는 중...';
+        setTimeout(() => {
+          window.location.reload();
+        }, 250);
+      } catch (err) {
+        console.log('update failed', err);
+        el.updateNote.textContent = '업데이트 확인에 실패했어요. 다시 시도해 주세요.';
+      }
+    }
+
     function registerSW() {
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
@@ -927,6 +955,7 @@
       press(el.resetFontBtn, () => removeCustomFont());
       press(el.installBtnTop, makeInstallHandler());
       press(el.installBtnSheet, makeInstallHandler());
+      press(el.updateAppBtn, () => checkForAppUpdate());
       press(el.goLibraryBtn, () => {
         showSheet(false);
         setScreen('library');
