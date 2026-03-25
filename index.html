@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#f6f1e8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="TXT Reader" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>TXT Reader Lite</title>
+  <style>
+    :root{
+      --bg:#f6f1e8;
+      --card:#fffdf8;
+      --text:#2f241a;
+      --muted:rgba(47,36,26,.62);
+      --border:rgba(0,0,0,.08);
+      --panel:rgba(0,0,0,.05);
+      --accent:#1f1f1f;
+      --reader-size:18px;
+      --reader-line:1.9;
+      --safe-top:env(safe-area-inset-top,0px);
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+      --header-h:64px;
+      --bottom-h:86px;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{
+      margin:0;padding:0;min-height:100%;
+      background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
+    }
+    body{display:flex;justify-content:center}
+    button,input{font:inherit}
+    .app{width:100%;max-width:430px;min-height:100dvh;background:var(--bg);position:relative;overflow:hidden}
+    .hidden{display:none!important}
+    .screen{min-height:100dvh}
+    .header{
+      position:fixed;left:0;right:0;top:0;z-index:40;height:calc(var(--header-h) + var(--safe-top));
+      padding:calc(var(--safe-top) + 10px) 14px 10px;border-bottom:1px solid var(--border);
+      background:var(--bg);display:flex;align-items:center;justify-content:space-between;
+      transition:transform .2s ease, opacity .2s ease;
+    }
+    .header.hide-ui{transform:translateY(-110%);opacity:0}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .brand-icon{
+      width:38px;height:38px;border-radius:14px;background:var(--accent);color:#fff;
+      display:grid;place-items:center;font-size:18px;flex:0 0 auto;
+    }
+    .title{font-size:15px;font-weight:800}
+    .subtitle{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+    .icon-btn,.menu-btn,.book-btn,.small-btn,.tab-btn,.chip{
+      border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:16px;cursor:pointer
+    }
+    .icon-btn{width:42px;height:42px;font-size:18px}
+    .library-wrap{padding:calc(var(--header-h) + var(--safe-top) + 12px) 14px 18px}
+    .section-title{font-size:13px;font-weight:800;color:var(--muted);margin:2px 2px 10px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:14px}
+    .menu-btn{width:100%;height:50px;font-weight:800;margin-bottom:10px;text-align:left;padding:0 14px}
+    .book-list{display:grid;gap:10px}
+    .book-btn{width:100%;padding:14px;text-align:left;border-radius:20px}
+    .book-title{font-size:15px;font-weight:800;line-height:1.35}
+    .book-meta{font-size:12px;color:var(--muted);margin-top:6px}
+    .empty{padding:18px 6px;font-size:14px;color:var(--muted);line-height:1.6}
+    .reader-wrap{
+      min-height:100dvh;padding-top:calc(var(--header-h) + var(--safe-top));
+      padding-bottom:calc(var(--bottom-h) + var(--safe-bottom));position:relative
+    }
+    .reader{
+      min-height:calc(100dvh - var(--header-h) - var(--bottom-h) - var(--safe-top) - var(--safe-bottom));
+      padding:22px 20px 26px; user-select:none;
+    }
+    .para{
+      margin:0 0 16px;
+      font-size:var(--reader-size);
+      line-height:var(--reader-line);
+      color:var(--text);
+      word-break:keep-all;
+      overflow-wrap:break-word;
+      user-select:text;
+    }
+    .para.nowrap{white-space:pre;overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+    .seg-bold{font-weight:800}
+    .seg-star{font-style:italic}
+    .seg-double{opacity:.92}
+    .seg-single{opacity:.9}
+    .tap-zone{
+      position:fixed;top:calc(var(--header-h) + var(--safe-top));bottom:calc(var(--bottom-h) + var(--safe-bottom));z-index:15
+    }
+    .tap-left{left:0;width:28%}
+    .tap-center{left:28%;width:44%}
+    .tap-right{right:0;width:28%}
+    .bottom{
+      position:fixed;left:0;right:0;bottom:0;z-index:35;background:var(--bg);border-top:1px solid var(--border);
+      padding:10px 12px calc(10px + var(--safe-bottom));
+      transition:transform .2s ease, opacity .2s ease;
+    }
+    .bottom.hide-ui{transform:translateY(110%);opacity:0}
+    .meta-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px;padding:0 2px}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+    .tab-btn{height:38px;background:transparent;font-weight:800;font-size:13px}
+    .tab-btn.active{background:var(--accent);color:#fff;border-color:transparent}
+    .panel{display:none;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:10px;gap:10px;align-items:center;overflow-x:auto;white-space:nowrap}
+    .panel.active{display:flex}
+    .chip{height:34px;padding:0 12px;font-size:12px;font-weight:800;background:transparent;border-radius:999px}
+    .chip.active{background:var(--accent);color:#fff;border-color:transparent}
+    .range-group{display:flex;align-items:center;gap:10px}
+    .range-group label{font-size:12px;color:var(--muted)}
+    input[type=range]{accent-color:var(--accent);width:110px}
+    input[type=color]{width:44px;height:34px;border-radius:12px;border:1px solid var(--border);background:transparent;padding:2px}
+    .sheet-backdrop{
+      position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:60;opacity:0;pointer-events:none;transition:opacity .18s ease
+    }
+    .sheet-backdrop.show{opacity:1;pointer-events:auto}
+    .sheet{
+      position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--card);border-top:1px solid var(--border);
+      border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 14px calc(14px + var(--safe-bottom));
+      transform:translateY(110%);transition:transform .2s ease
+    }
+    .sheet.show{transform:translateY(0)}
+    .handle{width:42px;height:5px;border-radius:999px;background:var(--border);margin:2px auto 10px}
+    .sheet-title{font-size:16px;font-weight:800;margin-bottom:10px}
+    .sheet-grid{display:grid;gap:10px}
+    .small-btn{height:48px;text-align:left;padding:0 14px;font-weight:800}
+    .small-note{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+    .marker-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .footer-note{font-size:12px;color:var(--muted);line-height:1.5;padding:10px 2px 0}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="libraryScreen" class="screen">
+      <header class="header" id="libraryHeader">
+        <div class="brand">
+          <div class="brand-icon">📚</div>
+          <div>
+            <div class="title">TXT Reader Lite</div>
+            <div class="subtitle">로컬 서재 + 경량 PWA</div>
+          </div>
+        </div>
+        <button id="libraryMenuBtn" class="icon-btn" aria-label="메뉴">✦</button>
+      </header>
+
+      <div class="library-wrap">
+        <div class="section-title">내 서재</div>
+        <div class="card">
+          <button id="importTxtBtnTop" class="menu-btn">TXT 불러오기</button>
+          <button id="installBtnTop" class="menu-btn">앱으로 설치</button>
+          <div class="empty" id="emptyState">아직 불러온 책이 없어요. TXT를 열면 이 안에 저장돼요.</div>
+          <div class="book-list" id="bookList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="readerScreen" class="screen hidden">
+      <header class="header" id="readerHeader">
+        <div class="brand">
+          <div class="brand-icon">📖</div>
+          <div>
+            <div class="title" id="readerTitle">제목</div>
+            <div class="subtitle" id="readerSubtitle">1 / 1 페이지</div>
+          </div>
+        </div>
+        <button id="readerMenuBtn" class="icon-btn" aria-label="메뉴">✦</button>
+      </header>
+
+      <div class="reader-wrap">
+        <div id="reader" class="reader"></div>
+        <div id="tapLeft" class="tap-zone tap-left" aria-hidden="true"></div>
+        <div id="tapCenter" class="tap-zone tap-center" aria-hidden="true"></div>
+        <div id="tapRight" class="tap-zone tap-right" aria-hidden="true"></div>
+      </div>
+
+      <nav class="bottom" id="bottomBar">
+        <div class="meta-row">
+          <div id="pageLabel">1 / 1 페이지</div>
+          <div id="progressLabel">100%</div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="theme">테마</button>
+          <button class="tab-btn" data-tab="text">텍스트</button>
+          <button class="tab-btn" data-tab="marker">표식</button>
+        </div>
+
+        <div class="panel active" data-panel="theme">
+          <button class="chip active" data-theme="sepia">셰피아</button>
+          <button class="chip" data-theme="light">라이트</button>
+          <button class="chip" data-theme="dark">다크</button>
+        </div>
+
+        <div class="panel" data-panel="text">
+          <div class="range-group">
+            <label>크기</label>
+            <input id="fontSizeRange" type="range" min="14" max="28" step="1" value="18" />
+          </div>
+          <div class="range-group">
+            <label>간격</label>
+            <input id="lineHeightRange" type="range" min="150" max="230" step="5" value="190" />
+          </div>
+          <div class="range-group">
+            <label>색상</label>
+            <input id="textColorInput" type="color" value="#2f241a" />
+          </div>
+          <button id="wrapToggleBtn" class="chip">자동 줄바꿈 켜짐</button>
+        </div>
+
+        <div class="panel" data-panel="marker">
+          <button class="chip active" data-filter="all">전체</button>
+          <button class="chip" data-filter="bold">**</button>
+          <button class="chip" data-filter="star">*</button>
+          <button class="chip" data-filter="double">"</button>
+          <button class="chip" data-filter="single">'</button>
+        </div>
+      </nav>
+    </div>
+
+    <div id="sheetBackdrop" class="sheet-backdrop"></div>
+    <section id="menuSheet" class="sheet" aria-hidden="true">
+      <div class="handle"></div>
+      <div class="sheet-title">메뉴</div>
+      <div class="sheet-grid">
+        <button id="importTxtBtnSheet" class="small-btn">TXT 불러오기 <span class="small-note">TXT 파일을 브라우저 안 서재에 저장</span></button>
+        <button id="goLibraryBtn" class="small-btn">서재로 가기 <span class="small-note">저장된 책 목록 보기</span></button>
+        <button id="installBtnSheet" class="small-btn">앱으로 설치 <span class="small-note" id="installNote">설치 가능하면 홈 화면에 추가돼요</span></button>
+        <div class="card" style="padding:12px">
+          <div class="section-title" style="margin-top:0">현재 책 표식 확인</div>
+          <div class="marker-grid" id="markerStats"></div>
+        </div>
+      </div>
+      <div class="footer-note">로컬 저장은 브라우저 내부 저장소를 사용해요. 별도 서버 연결은 없어요.</div>
+      <input id="txtInput" class="hidden" type="file" accept=".txt,text/plain" />
+    </section>
+  </div>
+
+  <script>
+    const SAMPLE_TEXT = `**제목**
+여기는 일반 문장입니다.
+
+*별표*가 들어간 문장도 읽을 수 있어요.
+
+"큰따옴표"와 '작은따옴표'도 확인할 수 있어요.
+
+가운데를 누르면 UI가 숨고, 오른쪽/왼쪽을 누르면 페이지가 넘어가요.`;
+
+    const DB_NAME = 'txt-reader-lite-db';
+    const DB_VERSION = 1;
+    const BOOK_STORE = 'books';
+    const SETTING_STORE = 'settings';
+
+    const state = {
+      books: [],
+      currentBookId: null,
+      currentBook: null,
+      page: 0,
+      pages: [],
+      pageCacheKey: '',
+      uiHidden: false,
+      menuOpen: false,
+      activeTab: 'theme',
+      installPrompt: null,
+      settings: {
+        theme: 'sepia',
+        fontSize: 18,
+        lineHeight: 1.9,
+        textColor: '#2f241a',
+        wrap: true,
+        markerFilter: 'all',
+      }
+    };
+
+    const el = {
+      libraryScreen: document.getElementById('libraryScreen'),
+      readerScreen: document.getElementById('readerScreen'),
+      reader: document.getElementById('reader'),
+      bookList: document.getElementById('bookList'),
+      emptyState: document.getElementById('emptyState'),
+      libraryMenuBtn: document.getElementById('libraryMenuBtn'),
+      readerMenuBtn: document.getElementById('readerMenuBtn'),
+      importTxtBtnTop: document.getElementById('importTxtBtnTop'),
+      importTxtBtnSheet: document.getElementById('importTxtBtnSheet'),
+      installBtnTop: document.getElementById('installBtnTop'),
+      installBtnSheet: document.getElementById('installBtnSheet'),
+      installNote: document.getElementById('installNote'),
+      goLibraryBtn: document.getElementById('goLibraryBtn'),
+      txtInput: document.getElementById('txtInput'),
+      readerTitle: document.getElementById('readerTitle'),
+      readerSubtitle: document.getElementById('readerSubtitle'),
+      pageLabel: document.getElementById('pageLabel'),
+      progressLabel: document.getElementById('progressLabel'),
+      readerHeader: document.getElementById('readerHeader'),
+      bottomBar: document.getElementById('bottomBar'),
+      tapLeft: document.getElementById('tapLeft'),
+      tapCenter: document.getElementById('tapCenter'),
+      tapRight: document.getElementById('tapRight'),
+      menuSheet: document.getElementById('menuSheet'),
+      sheetBackdrop: document.getElementById('sheetBackdrop'),
+      tabBtns: Array.from(document.querySelectorAll('[data-tab]')),
+      panels: Array.from(document.querySelectorAll('[data-panel]')),
+      themeBtns: Array.from(document.querySelectorAll('[data-theme]')),
+      filterBtns: Array.from(document.querySelectorAll('[data-filter]')),
+      fontSizeRange: document.getElementById('fontSizeRange'),
+      lineHeightRange: document.getElementById('lineHeightRange'),
+      textColorInput: document.getElementById('textColorInput'),
+      wrapToggleBtn: document.getElementById('wrapToggleBtn'),
+      markerStats: document.getElementById('markerStats'),
+    };
+
+    let db;
+    let saveSettingsTimer = null;
+    let saveProgressTimer = null;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(BOOK_STORE)) {
+            const store = db.createObjectStore(BOOK_STORE, { keyPath: 'id' });
+            store.createIndex('updatedAt', 'updatedAt');
+          }
+          if (!db.objectStoreNames.contains(SETTING_STORE)) {
+            db.createObjectStore(SETTING_STORE, { keyPath: 'key' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function tx(store, mode='readonly') {
+      return db.transaction(store, mode).objectStore(store);
+    }
+
+    function idbGetAllBooks() {
+      return new Promise((resolve, reject) => {
+        const req = tx(BOOK_STORE).getAll();
+        req.onsuccess = () => resolve((req.result || []).sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0)));
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbPutBook(book) {
+      return new Promise((resolve, reject) => {
+        const req = tx(BOOK_STORE, 'readwrite').put(book);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbGetBook(id) {
+      return new Promise((resolve, reject) => {
+        const req = tx(BOOK_STORE).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbDeleteBook(id) {
+      return new Promise((resolve, reject) => {
+        const req = tx(BOOK_STORE, 'readwrite').delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbPutSetting(key, value) {
+      return new Promise((resolve, reject) => {
+        const req = tx(SETTING_STORE, 'readwrite').put({ key, value });
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbGetSetting(key) {
+      return new Promise((resolve, reject) => {
+        const req = tx(SETTING_STORE).get(key);
+        req.onsuccess = () => resolve(req.result ? req.result.value : null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function applyTheme() {
+      const themes = {
+        sepia: { bg:'#f6f1e8', card:'#fffdf8', text:'#2f241a', muted:'rgba(47,36,26,.62)', border:'rgba(0,0,0,.08)', panel:'rgba(0,0,0,.05)', accent:'#1f1f1f' },
+        light: { bg:'#f8f8f8', card:'#ffffff', text:'#111111', muted:'rgba(17,17,17,.62)', border:'rgba(0,0,0,.08)', panel:'rgba(0,0,0,.05)', accent:'#111111' },
+        dark: { bg:'#111111', card:'#171717', text:'#f5f2eb', muted:'rgba(245,242,235,.7)', border:'rgba(255,255,255,.1)', panel:'rgba(255,255,255,.06)', accent:'#f5f2eb' }
+      };
+      const t = themes[state.settings.theme] || themes.sepia;
+      const root = document.documentElement.style;
+      root.setProperty('--bg', t.bg);
+      root.setProperty('--card', t.card);
+      root.setProperty('--text', t.text);
+      root.setProperty('--muted', t.muted);
+      root.setProperty('--border', t.border);
+      root.setProperty('--panel', t.panel);
+      root.setProperty('--accent', t.accent);
+      root.setProperty('--reader-size', state.settings.fontSize + 'px');
+      root.setProperty('--reader-line', String(state.settings.lineHeight));
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', t.bg);
+      el.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === state.settings.theme));
+      el.textColorInput.value = state.settings.textColor;
+      el.fontSizeRange.value = String(state.settings.fontSize);
+      el.lineHeightRange.value = String(Math.round(state.settings.lineHeight * 100));
+      el.wrapToggleBtn.textContent = state.settings.wrap ? '자동 줄바꿈 켜짐' : '자동 줄바꿈 꺼짐';
+      el.filterBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.filter === state.settings.markerFilter));
+    }
+
+    function setScreen(name) {
+      const isReader = name === 'reader';
+      el.libraryScreen.classList.toggle('hidden', isReader);
+      el.readerScreen.classList.toggle('hidden', !isReader);
+      state.uiHidden = false;
+      updateUiVisibility();
+    }
+
+    function updateUiVisibility() {
+      el.readerHeader.classList.toggle('hide-ui', state.uiHidden);
+      el.bottomBar.classList.toggle('hide-ui', state.uiHidden);
+    }
+
+    function showSheet(show) {
+      state.menuOpen = show;
+      el.sheetBackdrop.classList.toggle('show', show);
+      el.menuSheet.classList.toggle('show', show);
+      el.menuSheet.setAttribute('aria-hidden', String(!show));
+    }
+
+    function parseInline(text) {
+      const regex = /\*\*(.+?)\*\*|\*(.+?)\*|"([^"]+)"|'([^']+)'/g;
+      const segments = [];
+      const markers = new Set();
+      let last = 0;
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        if (m.index > last) segments.push({ type:'plain', text:text.slice(last, m.index) });
+        if (m[1] != null) { segments.push({ type:'bold', text:m[1] }); markers.add('bold'); }
+        else if (m[2] != null) { segments.push({ type:'star', text:m[2] }); markers.add('star'); }
+        else if (m[3] != null) { segments.push({ type:'double', text:m[3] }); markers.add('double'); }
+        else if (m[4] != null) { segments.push({ type:'single', text:m[4] }); markers.add('single'); }
+        last = regex.lastIndex;
+      }
+      if (last < text.length) segments.push({ type:'plain', text:text.slice(last) });
+      return { segments, markers: Array.from(markers) };
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function buildParagraphs(rawText) {
+      const parts = rawText.replace(/\r\n/g, '\n').split(/\n{2,}/);
+      return parts.map((p, idx) => {
+        const { segments, markers } = parseInline(p);
+        return { id: idx, raw: p, segments, markers };
+      }).filter(p => p.raw.trim().length);
+    }
+
+    function paragraphsForCurrentFilter(paragraphs) {
+      if (state.settings.markerFilter === 'all') return paragraphs;
+      return paragraphs.filter(p => p.markers.includes(state.settings.markerFilter));
+    }
+
+    function estimateWeight(paragraph) {
+      return Math.max(30, paragraph.raw.length + 22);
+    }
+
+    function getPageCacheKey(book) {
+      return [
+        book.id,
+        book.updatedAt,
+        state.settings.fontSize,
+        state.settings.lineHeight,
+        state.settings.wrap ? 1 : 0,
+        state.settings.markerFilter
+      ].join('|');
+    }
+
+    function paginateBook(book) {
+      const cacheKey = getPageCacheKey(book);
+      if (cacheKey === state.pageCacheKey && state.pages.length) return;
+      state.pageCacheKey = cacheKey;
+
+      const paragraphs = paragraphsForCurrentFilter(book.paragraphs);
+      const base = 1050 - (state.settings.fontSize - 18) * 52 - (state.settings.lineHeight - 1.9) * 260;
+      const limit = Math.max(420, Math.floor(base));
+      const pages = [];
+      let current = [];
+      let count = 0;
+      for (const p of paragraphs) {
+        const w = estimateWeight(p);
+        if (count + w > limit && current.length) {
+          pages.push(current);
+          current = [];
+          count = 0;
+        }
+        current.push(p);
+        count += w;
+      }
+      if (current.length) pages.push(current);
+      state.pages = pages.length ? pages : [[{ raw:'표식 필터에 맞는 내용이 없어요.', segments:[{type:'plain', text:'표식 필터에 맞는 내용이 없어요.'}], markers:[] }]];
+      if (state.page > state.pages.length - 1) state.page = 0;
+    }
+
+    function renderReader() {
+      const book = state.currentBook;
+      if (!book) return;
+      paginateBook(book);
+
+      const page = state.pages[state.page] || [];
+      const wrapClass = state.settings.wrap ? '' : ' nowrap';
+      el.reader.innerHTML = page.map(paragraph => {
+        const inner = paragraph.segments.map(seg => {
+          const t = escapeHtml(seg.text);
+          if (seg.type === 'bold') return `<span class="seg-bold">${t}</span>`;
+          if (seg.type === 'star') return `<span class="seg-star">${t}</span>`;
+          if (seg.type === 'double') return `<span class="seg-double">"${t}"</span>`;
+          if (seg.type === 'single') return `<span class="seg-single">'${t}'</span>`;
+          return t;
+        }).join('');
+        return `<p class="para${wrapClass}" style="color:${state.settings.textColor}">${inner}</p>`;
+      }).join('');
+
+      const total = state.pages.length || 1;
+      const percent = Math.round(((state.page + 1) / total) * 100);
+      el.readerTitle.textContent = book.title;
+      el.readerSubtitle.textContent = `${state.page + 1} / ${total} 페이지`;
+      el.pageLabel.textContent = `${state.page + 1} / ${total} 페이지`;
+      el.progressLabel.textContent = `${percent}%`;
+      renderMarkerStats();
+      scheduleProgressSave();
+    }
+
+    function renderMarkerStats() {
+      const b = state.currentBook;
+      if (!b) { el.markerStats.innerHTML = ''; return; }
+      const counts = { bold:0, star:0, double:0, single:0 };
+      b.paragraphs.forEach(p => {
+        p.markers.forEach(m => { if (counts[m] != null) counts[m] += 1; });
+      });
+      const labels = { bold:'**', star:'*', double:'"', single:"'" };
+      el.markerStats.innerHTML = Object.keys(counts).map(key =>
+        `<div class="book-btn" style="padding:12px"><div class="book-title">${labels[key]}</div><div class="book-meta">${counts[key]}개 문단</div></div>`
+      ).join('');
+    }
+
+    function renderLibrary() {
+      const books = state.books;
+      el.emptyState.classList.toggle('hidden', books.length > 0);
+      el.bookList.innerHTML = books.map(book => {
+        const title = escapeHtml(book.title || '제목 없음');
+        const meta = `${book.paragraphs.length}문단 · 마지막 ${Math.min((book.lastPage || 0)+1, Math.max(book.totalPages || 1, 1))}페이지`;
+        return `
+          <div class="book-btn">
+            <div class="book-title">${title}</div>
+            <div class="book-meta">${escapeHtml(meta)}</div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="chip" data-open-book="${book.id}">열기</button>
+              <button class="chip" data-delete-book="${book.id}">삭제</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchTab(tab) {
+      state.activeTab = tab;
+      el.tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+      el.panels.forEach(panel => panel.classList.toggle('active', panel.dataset.panel === tab));
+    }
+
+    async function loadBooks() {
+      state.books = await idbGetAllBooks();
+      renderLibrary();
+    }
+
+    function extractTitle(text, fallback='제목 없음') {
+      const lines = text.replace(/\r\n/g,'\n').split('\n').map(v=>v.trim()).filter(Boolean);
+      if (!lines.length) return fallback;
+      const first = lines[0];
+      return first.replace(/^\*\*(.+)\*\*$/, '$1').slice(0, 60) || fallback;
+    }
+
+    async function importTxt(file) {
+      const text = await file.text();
+      const now = Date.now();
+      const book = {
+        id: 'book-' + now,
+        title: extractTitle(text, file.name.replace(/\.txt$/i,'')),
+        rawText: text,
+        paragraphs: buildParagraphs(text),
+        lastPage: 0,
+        totalPages: 1,
+        createdAt: now,
+        updatedAt: now
+      };
+      await idbPutBook(book);
+      await loadBooks();
+      await openBook(book.id);
+      showSheet(false);
+    }
+
+    async function openBook(id) {
+      const book = await idbGetBook(id);
+      if (!book) return;
+      state.currentBookId = id;
+      state.currentBook = book;
+      state.page = Math.max(0, book.lastPage || 0);
+      state.pageCacheKey = '';
+      applyTheme();
+      renderReader();
+      setScreen('reader');
+      showSheet(false);
+    }
+
+    async function deleteBook(id) {
+      await idbDeleteBook(id);
+      if (state.currentBookId === id) {
+        state.currentBookId = null;
+        state.currentBook = null;
+        setScreen('library');
+      }
+      await loadBooks();
+    }
+
+    function scheduleSettingsSave() {
+      clearTimeout(saveSettingsTimer);
+      saveSettingsTimer = setTimeout(async () => {
+        await idbPutSetting('settings', state.settings);
+      }, 250);
+    }
+
+    function scheduleProgressSave() {
+      clearTimeout(saveProgressTimer);
+      saveProgressTimer = setTimeout(async () => {
+        if (!state.currentBook) return;
+        const book = { ...state.currentBook, lastPage: state.page, totalPages: state.pages.length || 1, updatedAt: Date.now() };
+        state.currentBook = book;
+        await idbPutBook(book);
+      }, 220);
+    }
+
+    function goNextPage() {
+      if (!state.currentBook) return;
+      if (state.page < state.pages.length - 1) {
+        state.page += 1;
+        renderReader();
+      }
+    }
+
+    function goPrevPage() {
+      if (!state.currentBook) return;
+      if (state.page > 0) {
+        state.page -= 1;
+        renderReader();
+      }
+    }
+
+    function press(element, handler) {
+      if (!element) return;
+      element.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        handler(e);
+      });
+    }
+
+    function registerSW() {
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+          try {
+            await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          } catch (err) {
+            console.log('SW 등록 실패', err);
+          }
+        });
+      }
+    }
+
+    function bindInstall() {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        state.installPrompt = e;
+        el.installNote.textContent = '설치 가능해요. 누르면 홈 화면에 추가돼요.';
+      });
+      window.addEventListener('appinstalled', () => {
+        el.installNote.textContent = '설치 완료! 이제 더 앱처럼 보여요 📚';
+      });
+    }
+
+    function makeInstallHandler() {
+      return async () => {
+        if (!state.installPrompt) {
+          el.installNote.textContent = '이 브라우저/환경에선 자동 설치 버튼이 안 뜰 수 있어요. 브라우저 메뉴에서 홈 화면에 추가를 써봐요.';
+          return;
+        }
+        state.installPrompt.prompt();
+        await state.installPrompt.userChoice;
+        state.installPrompt = null;
+      };
+    }
+
+    function bind() {
+      press(el.libraryMenuBtn, () => showSheet(true));
+      press(el.readerMenuBtn, () => showSheet(true));
+      press(el.sheetBackdrop, () => showSheet(false));
+      press(el.importTxtBtnTop, () => el.txtInput.click());
+      press(el.importTxtBtnSheet, () => el.txtInput.click());
+      press(el.installBtnTop, makeInstallHandler());
+      press(el.installBtnSheet, makeInstallHandler());
+      press(el.goLibraryBtn, () => {
+        showSheet(false);
+        setScreen('library');
+      });
+
+      el.txtInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) importTxt(file);
+        e.target.value = '';
+      });
+
+      press(el.tapLeft, () => goPrevPage());
+      press(el.tapRight, () => goNextPage());
+      press(el.tapCenter, () => {
+        state.uiHidden = !state.uiHidden;
+        updateUiVisibility();
+      });
+
+      el.tabBtns.forEach(btn => press(btn, () => switchTab(btn.dataset.tab)));
+      el.themeBtns.forEach(btn => press(btn, () => {
+        state.settings.theme = btn.dataset.theme;
+        if (state.settings.theme === 'dark' && state.settings.textColor === '#2f241a') state.settings.textColor = '#f5f2eb';
+        if (state.settings.theme !== 'dark' && state.settings.textColor === '#f5f2eb') state.settings.textColor = '#2f241a';
+        applyTheme();
+        renderReader();
+        scheduleSettingsSave();
+      }));
+      el.filterBtns.forEach(btn => press(btn, () => {
+        state.settings.markerFilter = btn.dataset.filter;
+        applyTheme();
+        state.page = 0;
+        state.pageCacheKey = '';
+        renderReader();
+        scheduleSettingsSave();
+      }));
+      press(el.wrapToggleBtn, () => {
+        state.settings.wrap = !state.settings.wrap;
+        applyTheme();
+        renderReader();
+        scheduleSettingsSave();
+      });
+
+      el.fontSizeRange.addEventListener('input', (e) => {
+        state.settings.fontSize = Number(e.target.value);
+        applyTheme();
+        state.pageCacheKey = '';
+        renderReader();
+        scheduleSettingsSave();
+      });
+      el.lineHeightRange.addEventListener('input', (e) => {
+        state.settings.lineHeight = Number(e.target.value) / 100;
+        applyTheme();
+        state.pageCacheKey = '';
+        renderReader();
+        scheduleSettingsSave();
+      });
+      el.textColorInput.addEventListener('input', (e) => {
+        state.settings.textColor = e.target.value;
+        applyTheme();
+        renderReader();
+        scheduleSettingsSave();
+      });
+
+      el.bookList.addEventListener('pointerup', (e) => {
+        const openId = e.target.closest('[data-open-book]')?.dataset.openBook;
+        const deleteId = e.target.closest('[data-delete-book]')?.dataset.deleteBook;
+        if (openId) {
+          e.preventDefault();
+          openBook(openId);
+        }
+        if (deleteId) {
+          e.preventDefault();
+          deleteBook(deleteId);
+        }
+      });
+
+      let startX = 0, startY = 0;
+      el.reader.addEventListener('touchstart', (e) => {
+        const t = e.changedTouches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+      }, { passive:true });
+      el.reader.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = Math.abs(t.clientY - startY);
+        if (Math.abs(dx) > 48 && dy < 34) {
+          if (dx < 0) goNextPage();
+          else goPrevPage();
+        }
+      }, { passive:true });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'PageDown') goNextPage();
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') goPrevPage();
+        if (e.key === 'Escape') showSheet(false);
+      });
+    }
+
+    async function init() {
+      db = await openDB();
+      const savedSettings = await idbGetSetting('settings');
+      if (savedSettings) state.settings = { ...state.settings, ...savedSettings };
+      const books = await idbGetAllBooks();
+      if (!books.length) {
+        const now = Date.now();
+        await idbPutBook({
+          id: 'sample-book',
+          title: '샘플 책',
+          rawText: SAMPLE_TEXT,
+          paragraphs: buildParagraphs(SAMPLE_TEXT),
+          lastPage: 0,
+          totalPages: 1,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+      await loadBooks();
+      applyTheme();
+      bind();
+      bindInstall();
+      registerSW();
+    }
+
+    init();
+  </script>
+</body>
+</html>
