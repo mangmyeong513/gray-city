@@ -3,36 +3,9 @@ self.onmessage = async (event) => {
   if (type !== 'parseFile' || !file) return;
 
   try {
-    const chunkSize = 256 * 1024;
-    let offset = 0;
-    let carry = '';
-    const lines = [];
-    let processed = 0;
-
-    while (offset < file.size) {
-      const blob = file.slice(offset, offset + chunkSize);
-      let text = await blob.text();
-      offset += chunkSize;
-
-      text = carry + text;
-      const parts = text.split('\n');
-      carry = parts.pop() ?? '';
-
-      for (const line of parts) {
-        lines.push(line);
-        processed++;
-        if (processed % 500 === 0) {
-          self.postMessage({ type: 'progress', value: offset / file.size });
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-      }
-    }
-
-    if (carry.length || file.size === 0) {
-      lines.push(carry);
-    }
-
-    self.postMessage({ type: 'done', lines });
+    const text = await file.text();
+    const blocks = parseBlocks(text);
+    self.postMessage({ type: 'done', blocks });
   } catch (error) {
     self.postMessage({
       type: 'error',
@@ -40,3 +13,50 @@ self.onmessage = async (event) => {
     });
   }
 };
+
+function parseBlocks(text) {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  const blocks = [];
+  let i = 0;
+  let processed = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const open = line.match(/^\[details:\s*(.+?)\s*\]$/i);
+
+    if (open) {
+      const title = open[1];
+      i++;
+      const body = [];
+      while (i < lines.length && !/^\[\/details\]\s*$/i.test(lines[i])) {
+        body.push(lines[i]);
+        i++;
+        processed++;
+        if (processed % 500 === 0) self.postMessage({ type: 'progress', value: i / lines.length });
+      }
+      if (i < lines.length) i++;
+      blocks.push({ kind: 'details', title, body: body.join('\n') });
+      continue;
+    }
+
+    if (!line.trim()) {
+      i++;
+      continue;
+    }
+
+    const para = [line];
+    i++;
+    while (i < lines.length) {
+      const current = lines[i];
+      if (!current.trim()) break;
+      if (/^\[details:\s*(.+?)\s*\]$/i.test(current)) break;
+      para.push(current);
+      i++;
+      processed++;
+      if (processed % 500 === 0) self.postMessage({ type: 'progress', value: i / lines.length });
+    }
+    blocks.push({ kind: 'paragraph', text: para.join('\n') });
+  }
+
+  return blocks;
+}

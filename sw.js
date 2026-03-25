@@ -1,13 +1,5 @@
-const CACHE = 'txt-reader-minimal-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './worker.js',
-  './manifest.webmanifest',
-  './icon-192.png',
-  './icon-512.png'
-];
+const CACHE = 'txt-reader-paged-v1';
+const ASSETS = ['./','./index.html','./app.js','./worker.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();

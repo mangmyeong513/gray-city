@@ -1,5 +1,5 @@
 {
-  "name": "TXT Reader Minimal",
+  "name": "TXT Reader Paged",
   "short_name": "TXT Reader",
   "start_url": "./index.html",
   "scope": "./",
@@ -7,15 +7,7 @@
   "background_color": "#f6f0e6",
   "theme_color": "#f6f0e6",
   "icons": [
-    {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
