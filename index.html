@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe6" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <title>TXT Reader Line Mode</title>
+  <title>TXT Reader Line</title>
   <style>
     :root{
       --bg:#f4efe6;
@@ -97,7 +97,7 @@
     }
     .book-title{font-size:15px;font-weight:800;line-height:1.35;letter-spacing:-.02em}
     .book-meta{font-size:12px;color:var(--muted);margin-top:7px}
-    .book-actions{display:flex;gap:8px;margin-top:12px}
+    .book-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
     .empty{padding:22px 8px 8px;font-size:14px;line-height:1.65;color:var(--muted)}
 
     .reader-screen{height:100dvh;overflow:hidden}
@@ -246,9 +246,10 @@
         <section class="hero">
           <div class="hero-title">줄 기준으로 끊기기</div>
           <div class="hero-sub">
-            글자가 사라지거나 오른쪽이 새는 걸 줄이기 위해, 이번엔 문단이 아니라 줄 단위로 페이지를 나눠요.
+            글자가 사라지거나 오른쪽이 새는 걸 줄이기 위해, 줄 단위로 페이지를 나눠요.
           </div>
           <button id="importTxtBtnTop" class="menu-btn">TXT 불러오기</button>
+          <button id="reopenRecentBtnTop" class="menu-btn">최근 책 다시 열기</button>
           <button id="installBtnTop" class="menu-btn">앱으로 설치</button>
         </section>
 
@@ -338,6 +339,7 @@
       <div class="sheet-title">메뉴</div>
       <div class="sheet-grid">
         <button id="importTxtBtnSheet" class="sheet-btn">TXT 불러오기<span class="sheet-note">TXT 파일을 로컬 서재에 저장</span></button>
+        <button id="reopenRecentBtnSheet" class="sheet-btn">최근 책 다시 열기<span class="sheet-note">마지막으로 읽던 책을 바로 열어요</span></button>
         <button id="fontUploadBtn" class="sheet-btn">서체 불러오기<span class="sheet-note">한 개만 유지돼요. 새 서체를 넣으면 이전 서체가 교체돼요.</span></button>
         <button id="resetFontBtn" class="sheet-btn">기본 서체로 되돌리기<span class="sheet-note">커스텀 서체 제거</span></button>
         <button id="goLibraryBtn" class="sheet-btn">서재로 가기<span class="sheet-note">저장된 책 목록 보기</span></button>
@@ -357,6 +359,8 @@
           <div id="markerStats" class="stats-grid"></div>
         </div>
       </div>
+      <input id="txtInput" class="hidden" type="file" accept=".txt,text/plain" />
+      <input id="fontInput" class="hidden" type="file" accept=".ttf,.otf,.woff,.woff2" />
     </section>
 
     <div id="measureLine" class="measure-line"></div>
@@ -396,7 +400,8 @@
         markerFilter: 'all',
         customFontName: '',
         customFontData: '',
-        customFontFamily: ''
+        customFontFamily: '',
+        recentBookId: ''
       }
     };
 
@@ -409,6 +414,8 @@
       readerMenuBtn: document.getElementById('readerMenuBtn'),
       importTxtBtnTop: document.getElementById('importTxtBtnTop'),
       importTxtBtnSheet: document.getElementById('importTxtBtnSheet'),
+      reopenRecentBtnTop: document.getElementById('reopenRecentBtnTop'),
+      reopenRecentBtnSheet: document.getElementById('reopenRecentBtnSheet'),
       installBtnTop: document.getElementById('installBtnTop'),
       installBtnSheet: document.getElementById('installBtnSheet'),
       installNote: document.getElementById('installNote'),
@@ -734,10 +741,10 @@
       measure.style.fontSize = state.settings.fontSize + 'px';
       measure.style.lineHeight = String(state.settings.lineHeight);
       measure.style.fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--reader-font');
-      measure.style.whiteSpace = state.settings.wrap ? 'pre-wrap' : 'pre-wrap';
+      measure.style.whiteSpace = 'pre-wrap';
 
       if (!state.settings.wrap) {
-        return text.split('\n');
+        return text.split('\n').map(v => v.length > 0 ? v : '');
       }
 
       const chunks = text.split(/(\s+)/).filter(v => v.length > 0);
@@ -747,7 +754,7 @@
       for (const chunk of chunks) {
         const test = current + chunk;
         measure.textContent = test;
-        if (measure.scrollWidth > measure.clientWidth && current) {
+        if (measure.scrollHeight > parseFloat(getComputedStyle(measure).lineHeight) + 2 && current) {
           lines.push(current.trimEnd());
           current = chunk.trimStart();
           if (!current) current = chunk;
@@ -852,10 +859,11 @@
       el.bookList.innerHTML = state.books.map(book => {
         const title = escapeHtml(book.title || '제목 없음');
         const meta = `${book.paragraphs.length}문단 · 마지막 ${Math.min((book.lastPage || 0)+1, Math.max(book.totalPages || 1, 1))}페이지`;
+        const recentBadge = state.settings.recentBookId === book.id ? ' · 최근 읽음' : '';
         return `
           <div class="book-card">
             <div class="book-title">${title}</div>
-            <div class="book-meta">${escapeHtml(meta)}</div>
+            <div class="book-meta">${escapeHtml(meta + recentBadge)}</div>
             <div class="book-actions">
               <button class="chip-btn" data-open-book="${book.id}">열기</button>
               <button class="chip-btn" data-delete-book="${book.id}">삭제</button>
@@ -909,14 +917,25 @@
       state.currentBook = book;
       state.page = Math.max(0, book.lastPage || 0);
       state.pageCacheKey = '';
+      state.settings.recentBookId = id;
       applyTheme();
       renderReader();
       setScreen('reader');
+      scheduleSettingsSave();
       showSheet(false);
+    }
+
+    async function reopenRecentBook() {
+      if (!state.settings.recentBookId) return;
+      await openBook(state.settings.recentBookId);
     }
 
     async function deleteBook(id) {
       await idbDeleteBook(id);
+      if (state.settings.recentBookId === id) {
+        state.settings.recentBookId = '';
+        scheduleSettingsSave();
+      }
       if (state.currentBookId === id) {
         state.currentBookId = null;
         state.currentBook = null;
@@ -1015,9 +1034,11 @@
       press(el.libraryMenuBtn, () => showSheet(true));
       press(el.readerMenuBtn, () => showSheet(true));
       press(el.sheetBackdrop, () => showSheet(false));
-      press(el.importTxtBtnTop, () => el.txtInput.click());
-      press(el.importTxtBtnSheet, () => el.txtInput.click());
-      press(el.fontUploadBtn, () => el.fontInput.click());
+      press(el.importTxtBtnTop, () => el.txtInput && el.txtInput.click());
+      press(el.importTxtBtnSheet, () => el.txtInput && el.txtInput.click());
+      press(el.reopenRecentBtnTop, () => reopenRecentBook());
+      press(el.reopenRecentBtnSheet, () => reopenRecentBook());
+      press(el.fontUploadBtn, () => el.fontInput && el.fontInput.click());
       press(el.resetFontBtn, () => removeCustomFont());
       press(el.installBtnTop, makeInstallHandler());
       press(el.installBtnSheet, makeInstallHandler());
