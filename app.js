@@ -301,13 +301,26 @@ function getAvailableReaderHeight() {
   const bottomInset = parseFloat(style.getPropertyValue('--safe-bottom')) || 0;
   const headerH = parseFloat(style.getPropertyValue('--header-h')) || 58;
   const bottomH = parseFloat(style.getPropertyValue('--bottom-h')) || 146;
-  return Math.max(220, window.innerHeight - topInset - bottomInset - headerH - bottomH);
+
+  // 모바일 브라우저 주소창, 폰 제스처바, 계산 오차용 여유
+  const extraBuffer = state.uiHidden ? 24 : 44;
+
+  return Math.max(
+    180,
+    window.innerHeight - topInset - bottomInset - headerH - bottomH - extraBuffer
+  );
 }
 function getLineHeightPx() { return state.settings.fontSize * state.settings.lineHeight; }
 function getMaxLinesPerPage() {
-  const available = getAvailableReaderHeight();
-  const usable = available - 6;
-  return Math.max(6, Math.floor(usable / getLineHeightPx()));
+  const linePx = getLineHeightPx();
+
+  // 마지막 줄 잘림 방지용으로 1.4줄 정도 미리 비워둠
+  const reserve = Math.ceil(linePx * 1.4);
+
+  return Math.max(
+    4,
+    Math.floor((getAvailableReaderHeight() - reserve) / linePx)
+  );
 }
 function getPageCacheKey(book) {
   return [
